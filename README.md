@@ -1,7 +1,6 @@
-## VATScout
+## VatPLS
 
-[VATScout](https://vatscout.com/) is a webapp for keeping an eye on what's happening on VATSIM, mainly targeted at controllers.
-
+VatPLS is a webapp for keeping track of controller/position staffing for live events, inspired by the PLS2 system used in real life in Sweden.
 ### Contributing
 
 Contributions of any kind are most welcome.

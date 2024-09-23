@@ -1,166 +1,399 @@
 <template>
-    <v-app>
-        <v-app-bar color="#2b2d31">
-            <v-row no-gutters align="center">
-                <v-col cols="2" sm="2">
-                    <span v-if="$route.path.length > 1">
-                        <v-btn icon plain @click="clickBack" color="grey"><v-icon size="x-large">mdi-chevron-left</v-icon></v-btn>
-                    </span>
-                </v-col>
-                <v-col cols="4" sm="7">
-                    <span v-if="$route.path.length > 1">
-                        <Search class="app-bar-search" />
-                    </span>
-                </v-col>
-                <v-col cols="6" sm="3" class="text-right">
-                    <v-btn v-if="settings.cid" icon plain :color="vatsim.iAmOnline ? 'grey' : 'grey-darken-2'" @click="clickMe">
-                        <v-icon>{{ vatsim.iAmOnline ? 'mdi-account' : 'mdi-account-outline' }}</v-icon>
-                        <v-tooltip activator="parent" location="bottom">{{ vatsim.iAmOnline ? 'Go most relevant page for online position' : 'Offline' }}</v-tooltip>
-                    </v-btn>
-                    <v-btn icon plain :color="settings.soundOn ? 'grey' : 'grey-darken-2'" @click="clickBell">
-                        <v-icon>{{ settings.soundOn ? "mdi-bell-ring" : "mdi-bell-off" }}</v-icon>
-                        <v-tooltip activator="parent" location="bottom">Toggle notifications sounds</v-tooltip>
-                    </v-btn>
-                    <v-btn icon plain color="grey-darken-2" @click="clickSettings"
-                        ><v-icon>mdi-cog</v-icon><v-tooltip activator="parent" location="bottom">Settings</v-tooltip></v-btn
-                    >
-                    <v-btn icon plain class="mx-2" @click="clickProgress">
-                        <v-progress-circular
-                            :model-value="progress"
-                            :indeterminate="vatsim.refreshing > 0"
-                            :color="outdated ? 'red' : vatsim.refreshing > 0 ? 'white' : 'grey'"
-                            class="text-caption"
-                            size="45"
-                        >
-                            <span v-if="vatsim.data.general">{{ moment(vatsim.data.general.update_timestamp).utc().format("HHmm") }}</span>
-                        </v-progress-circular>
-                        <v-tooltip activator="parent" location="bottom">Click to reload data</v-tooltip>
-                    </v-btn>
-                </v-col>
-            </v-row>
-            <v-snackbar v-model="snackbar" timeout="5000" color="grey-darken-3" class="mb-3">
-                <span v-html="snackbarText" />
+  <v-container>
+    <!-- Button to Add New Controller -->
+    <v-btn @click="showNewControllerDialog = true" color="primary" variant="tonal" class="mb-4">Ny flygledare</v-btn>
 
-                <template v-slot:actions>
-                    <v-btn icon size="small" @click="snackbar = false"><v-icon>mdi-close</v-icon></v-btn>
-                </template>
-            </v-snackbar>
-            <v-dialog v-model="showSettings" width="90%">
-                <v-card>
-                    <v-card-text>
-                        <Settings />
-                    </v-card-text>
-                </v-card>
-            </v-dialog>
-        </v-app-bar>
-        <v-main>
-            <router-view />
-            <hr color="#313338" class="mt-5" />
-            <v-row class="text-caption font-weight-light mx-1 mb-1">
-                <v-col cols="6">
-                    <router-link class="text-grey-darken-1 pa-1" to="/"> &copy; 2024 VATScout project contributors </router-link>
-                </v-col>
-                <v-col cols="6" class="text-right">
-                    <a class="text-grey-darken-1 pa-1" href="https://github.com/minsulander/vatscout"
-                        ><v-icon>mdi-github</v-icon> VATScout on GitHub</a
-                    >
-                </v-col>
-            </v-row>
-        </v-main>
-    </v-app>
+    <v-row>
+      <!-- Left Column: Position (Active Controllers) -->
+      <v-col cols="12" sm="4" @drop="onDropToPosition" @dragover.prevent>
+        <h1>Position</h1>
+        <v-col v-for="controller in activeControllers" :key="controller.CID" cols="12">
+          <v-card
+            class="border-card"
+            :style="getBorderColor(controller.rating)"
+            draggable="true"
+            @dragstart="onDragStart(controller, 'position')"
+          >
+            <v-card-text>
+              <v-row>
+                <v-tooltip top>
+                  <template v-slot:activator="{ on, attrs }">
+                    <v-col cols="3" v-bind="attrs" v-on="on">{{ controller.sign }}</v-col>
+                  </template>
+                  <span>{{ controller.name }}</span>
+                </v-tooltip>
+                <v-col cols="3">{{ controller.position }}</v-col>
+                <v-col cols="3">{{ formatTimeDifference(controller.timestamp) }}</v-col>
+              </v-row>
+              <v-row>
+                <v-col cols="6">{{ controller.endorsment === 'NIL' ? ' ' : controller.endorsment }}</v-col>
+                <v-col cols="6">{{ controller.callsign }}</v-col>
+              </v-row>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </v-col>
+
+      <!-- Middle Column: Paus (Available Controllers) -->
+      <v-col cols="12" sm="4" @drop="onDropToPaus" @dragover.prevent>
+        <h1>Paus</h1>
+        <v-col v-for="controller in controllerNames" :key="controller.CID" cols="12">
+          <v-card
+            class="border-card"
+            :style="getBorderColor(controller.rating)"
+            draggable="true"
+            @dragstart="onDragStart(controller, 'paus')"
+          >
+            <v-card-text>
+              <v-row>
+                <v-tooltip top>
+                  <template v-slot:activator="{ on, attrs }">
+                    <v-col cols="4" v-bind="attrs" v-on="on">{{ controller.sign }}</v-col>
+                  </template>
+                  <span>{{ controller.name }}</span>
+                </v-tooltip>
+                <v-col cols="4">Paus</v-col>
+                <v-col cols="4">{{ formatTimeDifference(controller.timestamp) }}</v-col>
+              </v-row>
+              <v-row>
+                <v-col cols="12">{{ controller.endorsment === 'NIL' ? ' ' : controller.endorsment }}</v-col>
+              </v-row>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </v-col>
+
+      <!-- Right Column: Övrig tid (Away Controllers) -->
+      <v-col cols="12" sm="4" @drop="onDropToAway" @dragover.prevent>
+        <h1>Övrig tid</h1>
+        <v-col v-for="controller in awayControllers" :key="controller.CID" cols="12">
+          <v-card
+            class="border-card"
+            :style="getBorderColor(controller.rating)"
+            draggable="true"
+            @dragstart="onDragStart(controller, 'away')"
+          >
+            <v-card-text>
+              <v-row>
+                <v-tooltip top>
+                  <template v-slot:activator="{ on, attrs }">
+                    <v-col cols="4" v-bind="attrs" v-on="on">{{ controller.sign }}</v-col>
+                  </template>
+                  <span>{{ controller.name }}</span>
+                </v-tooltip>
+                <v-col cols="4">{{ controller.position }}</v-col>
+                <v-col cols="4">{{ formatTimeDifference(controller.timestamp) }}</v-col>
+              </v-row>
+              <v-row>
+                <v-col cols="12">{{ controller.callsign }}</v-col>
+              </v-row>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </v-col>
+    </v-row>
+
+    <!-- Dialog for Adding a New Controller -->
+    <v-dialog v-model="showNewControllerDialog" max-width="500">
+      <v-card>
+        <v-card-title>Lägg till ny flygledare</v-card-title>
+        <v-card-text>
+          <v-form ref="newControllerForm">
+            <v-text-field v-model="newController.name" label="Full Name"></v-text-field>
+            <v-text-field v-model="newController.sign" label="Sign (2 letters)"></v-text-field>
+            <v-text-field v-model="newController.CID" label="CID"></v-text-field>
+            <v-select v-model="newController.rating" :items="ratings" label="Rating"></v-select>
+            <v-select v-model="newController.endorsment" :items="endorsments" label="Endorsment"></v-select>
+          </v-form>
+        </v-card-text>
+        <v-card-actions>
+          <v-btn color="primary" @click="addNewController">Add</v-btn>
+          <v-btn text @click="showNewControllerDialog = false">Cancel</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Dialog for Paus Column -->
+    <v-dialog v-model="showPausDialog" max-width="400">
+      <v-card>
+        <v-card-title>Gå på paus?</v-card-title>
+        <v-card-actions>
+          <v-btn color="primary" @click="confirmPaus">Yes</v-btn>
+          <v-btn text @click="cancelAction">Cancel</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Dialog for Övrig Tid Column (Free Text Input) -->
+    <v-dialog v-model="showAwayDialog" max-width="500">
+      <v-card>
+        <v-card-title>Ange notis</v-card-title>
+        <v-card-text>
+          <v-text-field v-model="freeTextPosition" label="Position"></v-text-field>
+        </v-card-text>
+        <v-card-actions>
+          <v-btn color="primary" @click="confirmAwayPosition">Save</v-btn>
+          <v-btn text @click="cancelAction">Cancel</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Dialog for Position and Callsign Selection -->
+    <v-dialog v-model="showPositionDialog" max-width="500">
+      <v-card>
+        <v-card-title>Set Position and Callsign</v-card-title>
+        <v-card-text>
+          <v-form ref="positionForm">
+            <v-select v-model="selectedPosition" :items="positions" label="Position"></v-select>
+            <v-text-field v-model="selectedCallsign" label="Callsign"></v-text-field>
+          </v-form>
+        </v-card-text>
+        <v-card-actions>
+          <v-btn color="primary" @click="savePositionSelection">Save</v-btn>
+          <v-btn text @click="cancelAction">Cancel</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+  </v-container>
 </template>
 
-<style scoped>
-.v-progress-circular {
-    opacity: 0.7;
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue'
+import moment from 'moment'
+
+// Columns for controllers
+const controllerNames = ref([])
+const activeControllers = ref([])
+const awayControllers = ref([])
+const showNewControllerDialog = ref(false)
+const showPositionDialog = ref(false)
+const showPausDialog = ref(false)
+const showAwayDialog = ref(false)
+const newController = ref({
+  name: '',
+  sign: '',
+  CID: '',
+  callsign: '',
+  frequency: '',
+  rating: '',
+  endorsment: '',
+  timestamp: new Date().toISOString() // Single timestamp
+})
+const ratings = ['S1', 'S2', 'S3', 'C1']
+const endorsments = ['T2 APS', 'T1 TWR', 'T1 APP', 'NIL']
+const selectedPosition = ref('')
+const selectedCallsign = ref('')
+const freeTextPosition = ref('') // Free text input for Övrig Tid
+const selectedController = ref(null)
+let originalSource = '' // Track where the controller was dragged from
+let originalController = null // Track the original controller
+const positions = ['Ground', 'Tower', 'Approach', 'Center']
+
+// Fetch controller data from the server
+async function fetchControllers() {
+  try {
+    const response = await fetch('http://localhost:3001/api/controllers')
+    const data = await response.json()
+    activeControllers.value = data.activeControllers || []
+    controllerNames.value = data.availableControllers || []
+    awayControllers.value = data.awayControllers || []
+  } catch (error) {
+    console.error('Error fetching controller data:', error)
+  }
 }
-</style>
-<style>
-.app-bar-search .v-messages__message {
-    margin-left: -16px;
-    margin-top: -5px;
+
+// Save controller data to the server
+async function saveControllers() {
+  try {
+    await fetch('http://localhost:3001/api/controllers', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        activeControllers: activeControllers.value,
+        availableControllers: controllerNames.value,
+        awayControllers: awayControllers.value,
+      }),
+    })
+  } catch (error) {
+    console.error('Error saving controller data:', error)
+  }
 }
-</style>
 
-<script lang="ts" setup>
-import Search from "@/components/Search.vue"
-import Settings from "@/views/Settings.vue"
-import constants from "@/constants"
-import { useVatsimStore } from "@/store/vatsim"
-import { computed, ref } from "vue"
-import { useSettingsStore } from "@/store/settings"
-import { useDisplay } from "vuetify"
-import moment from "moment"
-import { Howl } from "howler"
-import router from "@/router"
+// Add a new controller to the available controllers
+function addNewController() {
+  controllerNames.value.push({
+    ...newController.value,
+    timestamp: new Date().toISOString() // Set timestamp on addition
+  })
 
-const vatsim = useVatsimStore()
-const settings = useSettingsStore()
-;(window as any).vatsim = vatsim
-;(window as any).settings = settings
+  newController.value = {
+    name: '',
+    sign: '',
+    CID: '',
+    callsign: '',
+    frequency: '',
+    rating: '',
+    endorsment: '',
+    timestamp: new Date().toISOString()
+  }
 
-const display = useDisplay()
+  showNewControllerDialog.value = false
+  saveControllers()
+}
 
-const showSettings = ref(false)
-const snackbar = ref(false)
-const snackbarText = ref("")
+// Handle drag start event
+function onDragStart(controller, source) {
+  originalSource = source // Track the source
+  originalController = { ...controller } // Store a copy of the original controller
+  event.dataTransfer.setData('controller', JSON.stringify({ controller, source }))
+}
 
-const progress = computed(() => (vatsim.timeUntilRefresh * 100) / vatsim.refreshInterval)
+// Handle drop to Position column and open dialog
+function onDropToPosition(event) {
+  const { controller, source } = JSON.parse(event.dataTransfer.getData('controller'))
 
-const outdated = computed(() => {
-    if (!vatsim.data || !vatsim.data.general) return true
-    return moment(vatsim.data.general.update_timestamp).isBefore(moment().add(-vatsim.refreshInterval * 2.5, "millisecond"))
+  removeFromColumn(controller, source)
+
+  selectedController.value = controller
+  showPositionDialog.value = true
+}
+
+// Handle drop to Paus column and open dialog
+function onDropToPaus(event) {
+  const { controller, source } = JSON.parse(event.dataTransfer.getData('controller'))
+
+  removeFromColumn(controller, source)
+  
+  selectedController.value = controller
+  showPausDialog.value = true // Show paus confirmation dialog
+}
+
+// Handle drop to Övrig Tid column and open dialog
+function onDropToAway(event) {
+  const { controller, source } = JSON.parse(event.dataTransfer.getData('controller'))
+
+  removeFromColumn(controller, source)
+
+  selectedController.value = controller
+  showAwayDialog.value = true // Show free text input dialog for Övrig Tid
+}
+
+// Confirm moving to Paus column
+function confirmPaus() {
+  selectedController.value.timestamp = new Date().toISOString() // Reset timestamp
+  controllerNames.value.push(selectedController.value)
+  showPausDialog.value = false
+  saveControllers()
+}
+
+// Confirm moving to Övrig Tid column with free text
+function confirmAwayPosition() {
+  selectedController.value.position = freeTextPosition.value // Set free text position
+  selectedController.value.timestamp = new Date().toISOString() // Reset timestamp
+  awayControllers.value.push(selectedController.value)
+  showAwayDialog.value = false
+  saveControllers()
+}
+
+// Cancel action and revert the card to its original column
+function cancelAction() {
+  // Revert the card to its original column
+  if (originalSource === 'position') {
+    activeControllers.value.push(originalController)
+  } else if (originalSource === 'paus') {
+    controllerNames.value.push(originalController)
+  } else if (originalSource === 'away') {
+    awayControllers.value.push(originalController)
+  }
+
+  // Hide all dialogs
+  showPositionDialog.value = false
+  showPausDialog.value = false
+  showAwayDialog.value = false
+}
+
+// Save position and callsign selected in the dialog
+function savePositionSelection() {
+  if (selectedController.value) {
+    selectedController.value.position = selectedPosition.value
+    selectedController.value.callsign = selectedCallsign.value
+    selectedController.value.timestamp = new Date().toISOString() // Reset timestamp
+
+    activeControllers.value.push(selectedController.value)
+
+    showPositionDialog.value = false
+    saveControllers()
+  }
+}
+
+// Remove the controller from its original column
+function removeFromColumn(controller, source) {
+  if (source === 'position') {
+    activeControllers.value = activeControllers.value.filter(c => c.CID !== controller.CID)
+  } else if (source === 'paus') {
+    controllerNames.value = controllerNames.value.filter(c => c.CID !== controller.CID)
+  } else if (source === 'away') {
+    awayControllers.value = awayControllers.value.filter(c => c.CID !== controller.CID)
+  }
+}
+
+// Dynamically assign the border color using CSS variables
+function getBorderColor(rating) {
+  let color;
+  switch (rating) {
+    case 'S1':
+      color = 'red';
+      break;
+    case 'S2':
+      color = 'blue';
+      break;
+    case 'S3':
+      color = 'green';
+      break;
+    case 'C1':
+      color = 'yellow';
+      break;
+    default:
+      color = 'grey';
+  }
+  return { '--v-border-color': color, border: '4px solid var(--v-border-color)' };
+}
+
+// Compute the time difference between now and a given timestamp
+function formatTimeDifference(timestamp) {
+  if (!timestamp) return '--:--:--'
+  const now = moment()
+  const timeDiff = moment.duration(now.diff(moment(timestamp)))
+  const hours = String(Math.floor(timeDiff.asHours())).padStart(2, '0')
+  const minutes = String(Math.floor(timeDiff.minutes())).padStart(2, '0')
+  const seconds = String(Math.floor(timeDiff.seconds())).padStart(2, '0')
+  return `${hours}:${minutes}:${seconds}`
+}
+
+// Refresh the displayed time every second
+function refreshTime() {
+  setInterval(() => {
+    activeControllers.value = [...activeControllers.value]
+    controllerNames.value = [...controllerNames.value]
+    awayControllers.value = [...awayControllers.value]
+  }, 1000)
+}
+
+// Fetch data from the server when the component is mounted
+onMounted(() => {
+  fetchControllers()
+  refreshTime()
 })
 
-const sound = new Howl({ src: "/audio/notification.mp3" })
-
-function clickMe() {
-    const controller = vatsim.data.controllers.find(c => c.cid == settings.cid)
-    if (controller) {
-        let m: any = undefined
-        m = controller.callsign.match(/^(\w\w\w\w)_.*?(CTR)$/)
-        if (m && m[1] && vatsim.spy.firs && vatsim.spy.firs.find((f) => f.icao == m[1])) return router.push(`/fir/${m[1]}`)
-        m = controller.callsign.match(/^(\w\w\w\w)_.*?(APP)$/)
-        if (m && m[1] && vatsim.traconBoundaries && vatsim.traconBoundaries.find((b) => b.getProperties().id == m[1])) return router.push(`/tracon/${m[1]}`)
-        m = controller.callsign.match(/^(\w\w\w\w)_.*?(DEL|GND|TWR|APP)$/)
-        if (m && m[1]) return router.push(`/airport/${m[1]}`)
-        console.warn("Unknown page for controller", controller)
-        return
-    }
-    const pilot = vatsim.data.pilots.find(p => p.cid == settings.cid)
-    if (pilot && pilot.callsign) {
-        return router.push(`/flight/${pilot.callsign}`)
-    }
-    console.log(`${settings.cid} is not online`)
-}
-function clickBell() {
-    settings.soundOn = !settings.soundOn
-    settings.save()
-    if (settings.soundOn) {
-        sound.volume(settings.soundVolume / 100)
-        sound.play()
-        snackbarText.value = "Notification sounds will be played, e.g. when new flights pop up"
-        snackbar.value = true
-    } else {
-        snackbarText.value = "Notification sounds are muted"
-        snackbar.value = true
-    }
-}
-
-function clickSettings() {
-    if (display.xs.value) {
-        router.push("/settings")
-    } else {
-        showSettings.value = true
-    }
-}
-
-function clickProgress() {
-    vatsim.timeUntilRefresh = 0
-}
-
-function clickBack() {
-    if (!history.state.back) router.replace("/")
-    else return router.back()
-}
+onUnmounted(() => {
+  clearInterval(refreshTime)
+})
 </script>
+
+<style scoped>
+.border-card {
+  border-radius: 8px;
+}
+</style>

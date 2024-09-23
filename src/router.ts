@@ -44,6 +44,11 @@ const routes = [
         name: "404",
         component: () => import("@/views/Home.vue"),
     },
+    {
+        path: '/controllers',
+        name: 'ControllerList',
+        component: () => import('@/views/ControllerList.vue'),
+    }
 ]
 
 const router = createRouter({

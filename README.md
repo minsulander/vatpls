@@ -1,6 +1,11 @@
 ## VatPLS
 
 VatPLS is a webapp for keeping track of controller/position staffing during "live" events, inspired by the PLS system used by LFV in Sweden.
+
+### Controller cards layout
+![image](https://github.com/user-attachments/assets/81ac962d-0792-424e-8f9a-dc057f5893f7)
+
+
 ### Contributing
 
 Contributions of any kind are most welcome.

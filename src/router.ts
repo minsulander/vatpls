@@ -2,7 +2,7 @@
 import { createRouter, createWebHistory, isNavigationFailure } from "vue-router"
 
 const routes = [
-    {
+/*     {
         path: "/",
         name: "Home",
         component: () => import("@/views/Home.vue"),
@@ -48,6 +48,11 @@ const routes = [
         path: '/controllers',
         name: 'ControllerList',
         component: () => import('@/views/ControllerList.vue'),
+    } */
+    {
+        path: '/',
+        name: 'ControllerList',
+        component: () => import('@/App.vue'),
     }
 ]
 

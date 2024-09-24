@@ -211,7 +211,8 @@ async function fetchControllers() {
 }
 
 // Save controller data to the server
-async function saveControllers() {
+// movedController is the controller that changed state, this is the only controller we update the timestamp for.
+async function saveControllers(movedController: controller_t) {
     try {
         await fetch('http://localhost:3001/api/controllers', {
             method: 'POST',
@@ -222,6 +223,7 @@ async function saveControllers() {
                 activeControllers: activeControllers.value,
                 availableControllers: controllerNames.value,
                 awayControllers: awayControllers.value,
+                moved: movedController
             }),
         })
     } catch (error) {
@@ -236,6 +238,7 @@ function addNewController() {
         timestamp: new Date().toISOString() // Set timestamp on addition
     })
 
+
     newController.value = {
         name: '',
         sign: '',
@@ -249,7 +252,7 @@ function addNewController() {
     }
 
     showNewControllerDialog.value = false
-    saveControllers()
+    saveControllers(controllerNames.value[controllerNames.value.length - 1])
 }
 
 
@@ -322,7 +325,7 @@ function confirmPaus() {
     selectedController.value.timestamp = new Date().toISOString() // Reset timestamp
     controllerNames.value.push(selectedController.value)
     showPausDialog.value = false
-    saveControllers()
+    saveControllers(selectedController.value)
 }
 
 // Confirm moving to Övrig Tid column with free text
@@ -338,7 +341,7 @@ function confirmAwayPosition() {
     awayControllers.value.push(selectedController.value)
     showAwayDialog.value = false
 
-    saveControllers()
+    saveControllers(selectedController.value)
 }
 
 // Cancel action and revert the card to its original column
@@ -367,14 +370,19 @@ function savePositionSelection() {
     if (selectedController.value) {
 
         console.log("Saving: ", selectedController.value.name, ", time: ", selectedController.value.timestamp);
+        console.log("before active controllers list:", activeControllers.value);
         selectedController.value.position = selectedPosition.value
         selectedController.value.callsign = selectedCallsign.value
         selectedController.value.timestamp = new Date().toISOString() // Reset timestamp
 
+        console.log("Saving: ", selectedController.value.name, ", time: ", selectedController.value.timestamp);
+        console.log("after active controllers list:", activeControllers.value);
+        
+
         activeControllers.value.push(selectedController.value)
 
         showPositionDialog.value = false
-        saveControllers()
+        saveControllers(selectedController.value)
     }
 }
 

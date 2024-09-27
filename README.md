@@ -15,7 +15,7 @@ Contributions of any kind are most welcome.
 
 ### For developers
 
-It's a fairly straight-forward [Vue3](https://vuejs.org) + [Vuetify](https://vuetifyjs.com) project.
+It's a fairly straight-forward [Vue3](https://vuejs.org) + [Vuetify](https://vuetifyjs.com) + [Vue-draggable-plus](https://github.com/Alfred-Skyblue/vue-draggable-plus) project.
 
 ```sh
 npm install

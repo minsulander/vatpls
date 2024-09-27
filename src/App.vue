@@ -1,464 +1,561 @@
 <template>
-    <v-container>
-        <!-- Button to Add New Controller -->
-        <v-btn @click="showNewControllerDialog = true" color="primary" variant="tonal" class="mb-4">Ny
-            flygledare</v-btn>
+  <!-- Button to Add New Controller -->
+  <v-container fluid class="pa-5">
+    <v-btn @click="showNewControllerDialog = true" color="primary" variant="tonal" class="mb-4">
+      Ny flygledare
+    </v-btn>
 
-        <v-row>
-            <!-- Left Column: Position (Active Controllers) -->
-            <v-col cols="12" sm="4" @drop="onDropToPosition" @dragover.prevent>
-                <h1>Position</h1>
-                <v-col v-for="controller in activeControllers" :key="controller.CID" cols="12">
-                    <v-card class="border-card" :style="getBorderColor(controller.rating)" draggable="true"
-                        @dragstart="onDragStart($event, controller, 'position')">
-                        <v-card-text>
-                            <v-row>
-                                <v-tooltip location="top" text="{{ controller.name }}">
-                                    <template v-slot:activator="{ props }">
-                                        <v-col cols="3" v-bind="props">{{ controller.sign }}</v-col>
-                                    </template>
-                                    <span>{{ controller.name }}</span>
-                                </v-tooltip>
-                                <v-col cols="3">{{ controller.position }}</v-col>
-                                <v-col cols="3">{{ formatTimeDifference(controller.timestamp) }}</v-col>
-                            </v-row>
-                            <v-row>
-                                <v-col cols="6">{{ controller.endorsment === 'NIL' ? ' ' : controller.endorsment
-                                    }}</v-col>
-                                <v-col cols="6">{{ controller.callsign }}</v-col>
-                            </v-row>
-                        </v-card-text>
-                    </v-card>
+    <v-row class="d-flex">
+      <!-- Left Column: Position (Active Controllers) -->
+      <v-col>
+        <h3>Position</h3>
+        <VueDraggable
+          class="d-flex flex-column gap-2 pa-4 h-100 bg-grey darken-3 overflow-auto"
+          v-model="activeControllers"
+          animation="150"
+          ghostClass="ghost"
+          group="tasks"
+          @update="onUpdate"
+          @add="onAddPosition"
+          @remove="onRemove"
+        >
+          <div
+            v-for="controller in activeControllers"
+            :key="controller.CID"
+            class="cursor-move white-bg lighten-5 mb-2"
+            :style="getBorderColor(controller.rating)"
+            @dragstart="onDragStart(controller)"
+          >
+            <v-card-text class="pa-1">
+              <v-row no-gutters class="border-row">
+                <v-col cols="4" class="border-cell no-border-left no-border-top">
+                  <v-tooltip top text="{{ controller.name }}">
+                    <template v-slot:activator="{ props }">
+                      <div v-bind="props">{{ controller.sign }} ({{ controller.CID }})</div>
+                    </template>
+                    <span>{{ controller.name }}</span>
+                  </v-tooltip>
                 </v-col>
-            </v-col>
-
-            <!-- Middle Column: Paus (Available Controllers) -->
-            <v-col cols="12" sm="4" @drop="onDropToPaus" @dragover.prevent>
-                <h1>Paus</h1>
-                <v-col v-for="controller in controllerNames" :key="controller.CID" cols="12">
-                    <v-card class="border-card" :style="getBorderColor(controller.rating)" draggable="true"
-                        @dragstart="onDragStart($event, controller, 'paus')">
-                        <v-card-text>
-                            <v-row>
-                                <v-tooltip location="top" text="{{ controller.name }}">
-                                    <template v-slot:activator="{ props }">
-                                        <v-col cols="4" v-bind="props">{{ controller.sign }}</v-col>
-                                    </template>
-                                    <span>{{ controller.name }}</span>
-                                </v-tooltip>
-                                <v-col cols="4">Paus</v-col>
-                                <v-col cols="4">{{ formatTimeDifference(controller.timestamp) }}</v-col>
-                            </v-row>
-                            <v-row>
-                                <v-col cols="12">{{ controller.endorsment === 'NIL' ? ' ' : controller.endorsment
-                                    }}</v-col>
-                            </v-row>
-                        </v-card-text>
-                    </v-card>
+                <v-col cols="4" class="border-cell no-border-top">
+                  {{ controller.position }}
                 </v-col>
-            </v-col>
-
-            <!-- Right Column: Övrig tid (Away Controllers) -->
-            <v-col cols="12" sm="4" @drop="onDropToAway" @dragover.prevent>
-                <h1>Övrig tid</h1>
-                <v-col v-for="controller in awayControllers" :key="controller.CID" cols="12">
-                    <v-card class="border-card" :style="getBorderColor(controller.rating)" draggable="true"
-                        @dragstart="onDragStart($event, controller, 'away')">
-                        <v-card-text>
-                            <v-row>
-                                <v-tooltip location="top" text="{{ controller.name }}">
-                                    <template v-slot:activator="{ props }">
-                                        <v-col cols="4" v-bind="props">{{ controller.sign }}</v-col>
-                                    </template>
-                                    <span>{{ controller.name }}</span>
-                                </v-tooltip>
-                                <v-col cols="4">{{ controller.position }}</v-col>
-                                <v-col cols="4">{{ formatTimeDifference(controller.timestamp) }}</v-col>
-                            </v-row>
-                            <v-row>
-                                <v-col cols="12">{{ controller.callsign }}</v-col>
-                            </v-row>
-                        </v-card-text>
-                    </v-card>
+                <v-col cols="4" class="border-cell no-border-right no-border-top">
+                  {{ formatTimeDifference(controller.timestamp) }}
                 </v-col>
-            </v-col>
-        </v-row>
+              </v-row>
 
-        <!-- Dialog for Adding a New Controller -->
-        <v-dialog v-model="showNewControllerDialog" max-width="500">
-            <v-card>
-                <v-card-title>Lägg till ny flygledare</v-card-title>
-                <v-card-text>
-                    <v-form ref="newControllerForm">
-                        <v-text-field v-model="newController.name" label="Full Name"></v-text-field>
-                        <v-text-field v-model="newController.sign" label="Sign (2 letters)"></v-text-field>
-                        <v-text-field v-model="newController.CID" label="CID"></v-text-field>
-                        <v-select v-model="newController.rating" :items="ratings" label="Rating"></v-select>
-                        <v-select v-model="newController.endorsment" :items="endorsments" label="Endorsment"></v-select>
-                    </v-form>
-                </v-card-text>
-                <v-card-actions>
-                    <v-btn color="primary" @click="addNewController">Add</v-btn>
-                    <v-btn @click="showNewControllerDialog = false">Cancel</v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
+              <v-row no-gutters class="border-row">
+                <v-col cols="6" class="border-cell no-border-left no-border-bottom">
+                  {{ controller.endorsment === "NIL" ? " " : controller.endorsment }}
+                </v-col>
+                <v-col cols="6" class="border-cell no-border-right no-border-bottom">
+                  {{ controller.callsign }}
+                </v-col>
+              </v-row>
+            </v-card-text>
+          </div>
+        </VueDraggable>
+      </v-col>
 
-        <!-- Dialog for Paus Column -->
-        <v-dialog v-model="showPausDialog" max-width="400">
-            <v-card>
-                <v-card-title>Gå på paus?</v-card-title>
-                <v-card-actions>
-                    <v-btn color="primary" @click="confirmPaus">Yes</v-btn>
-                    <v-btn @click="cancelAction">Cancel</v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
+      <!-- Middle Column: Paus (Available Controllers) -->
+      <v-col>
+        <h3>Paus</h3>
+        <VueDraggable
+          class="d-flex flex-column gap-2 pa-4 h-100 bg-grey darken-3 overflow-auto"
+          v-model="controllerNames"
+          animation="150"
+          ghostClass="ghost"
+          group="tasks"
+          @update="onUpdate"
+          @add="onAddPause"
+          @remove="onRemove"
+        >
+          <div
+            v-for="controller in controllerNames"
+            :key="controller.CID"
+            :style="getBorderColor(controller.rating)"
+            class="cursor-move white-bg lighten-5 mb-2"
+            @dragstart="onDragStart(controller)"
+          >
+            <v-card-text class="pa-1">
+              <v-row no-gutters class="border-row">
+                <v-col cols="4" class="border-cell no-border-left no-border-top">
+                  <v-tooltip top text="{{ controller.name }}">
+                    <template v-slot:activator="{ props }">
+                      <div v-bind="props">{{ controller.sign }} ({{ controller.CID }})</div>
+                    </template>
+                    <span>{{ controller.name }}</span>
+                  </v-tooltip>
+                </v-col>
+                <v-col cols="4" class="border-cell no-border-top">
+                  Paus
+                </v-col>
+                <v-col cols="4" class="border-cell no-border-right no-border-top">
+                  {{ formatTimeDifference(controller.timestamp) }}
+                </v-col>
+              </v-row>
 
-        <!-- Dialog for Övrig Tid Column (Free Text Input) -->
-        <v-dialog v-model="showAwayDialog" max-width="500">
-            <v-card>
-                <v-card-title>Ange notis</v-card-title>
-                <v-card-text>
-                    <v-text-field v-model="freeTextPosition" label="Position"></v-text-field>
-                </v-card-text>
-                <v-card-actions>
-                    <v-btn color="primary" @click="confirmAwayPosition">Save</v-btn>
-                    <v-btn @click="cancelAction">Cancel</v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
+              <v-row no-gutters class="border-row">
+                <v-col cols="6" class="border-cell no-border-left no-border-bottom">
+                  {{ controller.endorsment === "NIL" ? " " : controller.endorsment }}
+                </v-col>
+                <v-col cols="6" class="border-cell no-border-right no-border-bottom">&nbsp;</v-col>
+              </v-row>
+            </v-card-text>
+          </div>
+        </VueDraggable>
+      </v-col>
 
-        <!-- Dialog for Position and Callsign Selection -->
-        <v-dialog v-model="showPositionDialog" max-width="500">
-            <v-card>
-                <v-card-title>Set Position and Callsign</v-card-title>
-                <v-card-text>
-                    <v-form ref="positionForm">
-                        <v-select v-model="selectedPosition" :items="positions" label="Position"></v-select>
-                        <v-text-field v-model="selectedCallsign" label="Callsign"></v-text-field>
-                    </v-form>
-                </v-card-text>
-                <v-card-actions>
-                    <v-btn color="primary" @click="savePositionSelection">Save</v-btn>
-                    <v-btn @click="cancelAction">Cancel</v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
-    </v-container>
+      <!-- Right Column: Övrig tid (Away Controllers) -->
+      <v-col>
+        <h3>Övrig tid</h3>
+        <VueDraggable
+          class="d-flex flex-column gap-2 pa-4 h-100 bg-grey darken-3 overflow-auto"
+          v-model="awayControllers"
+          animation="150"
+          ghostClass="ghost"
+          group="tasks"
+          @update="onUpdate"
+          @add="onAddAway"
+          @remove="onRemove"
+        >
+          <div
+            v-for="controller in awayControllers"
+            :key="controller.CID"
+            :style="getBorderColor(controller.rating)"
+            class="cursor-move white-bg lighten-5 mb-2"
+            @dragstart="onDragStart(controller)"
+          >
+            <v-card-text class="pa-1">
+              <v-row no-gutters class="border-row">
+                <v-col cols="4" class="border-cell no-border-left no-border-top">
+                  <v-tooltip top text="{{ controller.name }}">
+                    <template v-slot:activator="{ props }">
+                      <div v-bind="props">{{ controller.sign }} ({{ controller.CID }})</div>
+                    </template>
+                    <span>{{ controller.name }}</span>
+                  </v-tooltip>
+                </v-col>
+                <v-col cols="4" class="border-cell no-border-top">
+                  {{ controller.position || " " }}
+                </v-col>
+                <v-col cols="4" class="border-cell no-border-right no-border-top">
+                  {{ formatTimeDifference(controller.timestamp) }}
+                </v-col>
+              </v-row>
+
+              <v-row no-gutters class="border-row">
+                <v-col cols="6" class="border-cell no-border-left no-border-bottom">
+                  {{ controller.endorsment === "NIL" ? " " : controller.endorsment }}
+                </v-col>
+                <v-col cols="6" class="border-cell no-border-right no-border-bottom">&nbsp;</v-col>
+              </v-row>
+            </v-card-text>
+          </div>
+        </VueDraggable>
+      </v-col>
+    </v-row>
+
+    <!-- Dialog for Adding a New Controller -->
+    <v-dialog v-model="showNewControllerDialog" max-width="500">
+      <v-card>
+        <v-card-title>Lägg till ny flygledare</v-card-title>
+        <v-card-text>
+          <v-form ref="newControllerForm">
+            <v-text-field v-model="newController.name" label="Full Name"></v-text-field>
+            <v-text-field v-model="newController.sign" label="Sign (2 letters)"></v-text-field>
+            <v-text-field v-model="newController.CID" label="CID"></v-text-field>
+            <v-select v-model="newController.rating" :items="ratings" label="Rating"></v-select>
+            <v-select v-model="newController.endorsment" :items="endorsments" label="Endorsment"></v-select>
+          </v-form>
+        </v-card-text>
+        <v-card-actions>
+          <v-btn color="primary" @click="addNewController">Add</v-btn>
+          <v-btn text @click="showNewControllerDialog = false">Cancel</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Dialog for Pause -->
+    <v-dialog v-model="showPauseDialog" max-width="400">
+      <v-card>
+        <v-card-title>Gå på paus?</v-card-title>
+        <v-card-actions>
+          <v-btn color="primary" @click="confirmPause">Yes</v-btn>
+          <v-btn text @click="cancelAction">Cancel</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Dialog for selection of Position and Callsign -->
+    <v-dialog v-model="showPositionDialog" max-width="500">
+      <v-card>
+        <v-card-title>Set Position and Callsign</v-card-title>
+        <v-card-text>
+          <v-form ref="positionForm">
+            <v-select v-model="selectedPosition" :items="positions" label="Position"></v-select>
+            <v-text-field v-model="selectedCallsign" label="Callsign"></v-text-field>
+          </v-form>
+        </v-card-text>
+        <v-card-actions>
+          <v-btn color="primary" @click="confirmPosition">Save</v-btn>
+          <v-btn text @click="cancelAction">Cancel</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Dialog for Away Position -->
+    <v-dialog v-model="showAwayDialog" max-width="500">
+      <v-card>
+          <v-card-title>Ange notis</v-card-title>
+          <v-card-text>
+              <v-text-field v-model="freeTextPositon" label="Notis"></v-text-field>
+          </v-card-text>
+          <v-card-actions>
+              <v-btn color="primary" @click="confirmAway">Save</v-btn>
+              <v-btn @click="cancelAction">Cancel</v-btn>
+          </v-card-actions>
+      </v-card>
+    </v-dialog>
+  </v-container>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import moment from 'moment'
+import { ref, onMounted, onUnmounted, computed } from "vue"
+import { VueDraggable } from "vue-draggable-plus"
+import moment from "moment"
 
-// Columns for controllers
-type controller_t = {
-    name: string,
-    sign: string,
-    CID: string,
-    callsign: string,
-    frequency: string,
-    rating: string,
-    endorsment: string,
-    position: string,
-    timestamp: string,
-};
+interface Controller {
+  name: string;
+  sign: string;
+  CID: string;
+  callsign: string;
+  position?: string;
+  frequency: string;
+  rating: string;
+  endorsment: string;
+  timestamp: string;
+}
 
-type state_t = "position" | "paus" | "away";
+const ratings = [ "S1", "S2", "S3", "C1" ]
+const endorsments = [ "NIL", "T2 APS", "T1 TWR", "T1 APP" ]
+const positions = [ "GG AD1", "GG AD2", "GG AD3", "SA AD1", "SA AD2", "SA AD3", "SA AD4", "ACC1", "ACC2", "ACC3", "ACC4", "ACC5", "ACC6", "WS", "Ö1", "Ö2" ]
 
-const controllerNames = ref<controller_t[]>([])
-const activeControllers = ref<controller_t[]>([])
-const awayControllers = ref<controller_t[]>([])
 const showNewControllerDialog = ref(false)
 const showPositionDialog = ref(false)
-const showPausDialog = ref(false)
+const showPauseDialog = ref(false)
 const showAwayDialog = ref(false)
+
+const selectedPosition = ref("")
+const selectedCallsign = ref("")
+const freeTextPositon = ref("")
+
+const activeControllers = ref<Controller[]>([])
+const controllerNames = ref<Controller[]>([])
+const awayControllers = ref<Controller[]>([])
+
+const backupActiveControllers = ref<Controller[] | null>(null)
+const backupControllerNames = ref<Controller[] | null>(null)
+const backupAwayControllers = ref<Controller[] | null>(null)
+const backupControllers = ref(false)
+
+const selectedController = ref<Controller | null>(null)
+
 const newController = ref({
-    name: '',
-    sign: '',
-    CID: '',
-    callsign: '',
-    frequency: '',
-    rating: '',
-    endorsment: '',
-    position: '',
-    timestamp: new Date().toISOString() // Single timestamp
+  name: "",
+  sign: "",
+  CID: "",
+  callsign: "",
+  position: "",
+  frequency: "",
+  rating: "",
+  endorsment: "",
+  timestamp: new Date().toISOString()
 })
-const ratings = ['S1', 'S2', 'S3', 'C1']
-const endorsments = ['T2 APS', 'T1 TWR', 'T1 APP', 'NIL']
-const selectedPosition = ref('')
-const selectedCallsign = ref('')
-const freeTextPosition = ref('') // Free text input for Övrig Tid
-const selectedController = ref<controller_t | null>(null);
-let originalSource = '' // Track where the controller was dragged from
-let originalController: null | controller_t = null // Track the original controller
-const positions = ['Ground', 'Tower', 'Approach', 'Center']
 
-// Fetch controller data from the server
 async function fetchControllers() {
-    try {
-        const response = await fetch('http://localhost:3001/api/controllers')
-        const data = await response.json()
+  try {
+    const response = await fetch("http://localhost:3001/api/controllers")
+    const data = await response.json()
 
-        activeControllers.value = data.activeControllers || []
-        controllerNames.value = data.availableControllers || []
-        awayControllers.value = data.awayControllers || []
+    activeControllers.value = data.activeControllers || []
+    controllerNames.value = data.availableControllers || []
+    awayControllers.value = data.awayControllers || []
+  } catch(error) {
+    console.error("Error fetching controller data:", error)
+  }
 
-    } catch (error) {
-        console.error('Error fetching controller data:', error)
-    }
+  sortControllerSessions()
 }
 
-// Save controller data to the server
-// movedController is the controller that changed state, this is the only controller we update the timestamp for.
-async function saveControllers(movedController: controller_t) {
-    try {
-        await fetch('http://localhost:3001/api/controllers', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                activeControllers: activeControllers.value,
-                availableControllers: controllerNames.value,
-                awayControllers: awayControllers.value,
-                moved: movedController
-            }),
-        })
-    } catch (error) {
-        console.error('Error saving controller data:', error)
-    }
-}
-
-// Add a new controller to the available controllers
-function addNewController() {
-    controllerNames.value.push({
-        ...newController.value,
-        timestamp: new Date().toISOString() // Set timestamp on addition
+async function saveControllers(movedController: Controller) {
+  try {
+    await fetch("http://localhost:3001/api/controllers", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        activeControllers: activeControllers.value,
+        availableControllers: controllerNames.value,
+        awayControllers: awayControllers.value,
+        moved: movedController
+      })
     })
+  } catch(error) {
+    console.error("Error saving controller data:", error)
+  }
 
-
-    newController.value = {
-        name: '',
-        sign: '',
-        CID: '',
-        callsign: '',
-        frequency: '',
-        rating: '',
-        endorsment: '',
-        position: '',
-        timestamp: new Date().toISOString()
-    }
-
-    showNewControllerDialog.value = false
-    saveControllers(controllerNames.value[controllerNames.value.length - 1])
+  sortControllerSessions()
 }
 
+function addNewController() {
+  controllerNames.value.push({
+    ...newController.value,
+    timestamp: new Date().toISOString() // Set timestamp on addition
+  })
 
-// Handle drag start event
-function onDragStart(evt: DragEvent, controller: controller_t, source: state_t) {
-    if (!evt.dataTransfer) {
-        console.log("(onDragStart) dataTransfer is null, drop operation not supported.")
-        return;
-    }
+  newController.value = {
+    name: "",
+    sign: "",
+    CID: "",
+    callsign: "",
+    position: "",
+    frequency: "",
+    rating: "",
+    endorsment: "",
+    timestamp: new Date().toISOString()
+  }
 
-    originalSource = source // Track the source
-    originalController = { ...controller } // Store a copy of the original controller
-
-    evt.dataTransfer.setData('controller', JSON.stringify({ controller, source }))
+  showNewControllerDialog.value = false
+  saveControllers(controllerNames.value.slice(-1)[0])
 }
 
-// Handle drop to Position column and open dialog
-function onDropToPosition(evt: DragEvent) {
-    if (!evt.dataTransfer) {
-        console.log("(onDropToPosition) dataTransfer is null, drop operation not supported.")
-        return;
-    }
-    const { controller, source } = JSON.parse(evt.dataTransfer.getData('controller'))
-
-    removeFromColumn(controller, source)
-
-    selectedController.value = controller
-    showPositionDialog.value = true
-}
-
-// Handle drop to Paus column and open dialog
-function onDropToPaus(evt: DragEvent) {
-    if (!evt.dataTransfer) {
-        console.log("(onDropToPaus) dataTransfer is null, drop operation not supported.")
-        return;
-    }
-
-    const { controller, source } = JSON.parse(evt.dataTransfer.getData('controller'))
-    removeFromColumn(controller, source)
-
-    selectedController.value = controller
-    showPausDialog.value = true // Show paus confirmation dialog
-}
-
-// Handle drop to Övrig Tid column and open dialog
-function onDropToAway(evt: DragEvent) {
-    if (!evt.dataTransfer) {
-        console.log("(onDropToAway) dataTransfer is null, drop operation not supported.")
-        return;
-    }
-
-    const { controller, source } = JSON.parse(evt.dataTransfer.getData('controller'))
-
-    removeFromColumn(controller, source)
-
-    selectedController.value = controller
-    showAwayDialog.value = true // Show free text input dialog for Övrig Tid
-}
-
-
-// Confirm moving to Paus column
-function confirmPaus() {
-    // Selectedcontroller is set.
-    if (!selectedController.value) {
-        return;
-    }
-
-    console.log("Saving: ", selectedController.value.name, ", time: ", selectedController.value.timestamp);
-
-    selectedController.value.timestamp = new Date().toISOString() // Reset timestamp
-    controllerNames.value.push(selectedController.value)
-    showPausDialog.value = false
-    saveControllers(selectedController.value)
-}
-
-// Confirm moving to Övrig Tid column with free text
-function confirmAwayPosition() {
-    // Selectedcontroller is set.
-    if (!selectedController.value) {
-        return;
-    }
-    console.log("Saving: ", selectedController.value.name, ", time: ", selectedController.value.timestamp);
-    selectedController.value.position = freeTextPosition.value // Set free text position
-    selectedController.value.timestamp = new Date().toISOString() // Reset timestamp
-
-    awayControllers.value.push(selectedController.value)
-    showAwayDialog.value = false
-
-    saveControllers(selectedController.value)
-}
-
-// Cancel action and revert the card to its original column
-function cancelAction() {
-    // Revert the card to its original column
-    if (!originalController) {
-        console.warn("originalController was null.")
-        return;
-    }
-    if (originalSource === 'position') {
-        activeControllers.value.push(originalController)
-    } else if (originalSource === 'paus') {
-        controllerNames.value.push(originalController)
-    } else if (originalSource === 'away') {
-        awayControllers.value.push(originalController)
-    }
-
-    // Hide all dialogs
-    showPositionDialog.value = false
-    showPausDialog.value = false
-    showAwayDialog.value = false
-}
-
-// Save position and callsign selected in the dialog
-function savePositionSelection() {
-    if (selectedController.value) {
-
-        console.log("Saving: ", selectedController.value.name, ", time: ", selectedController.value.timestamp);
-        console.log("before active controllers list:", activeControllers.value);
-        selectedController.value.position = selectedPosition.value
-        selectedController.value.callsign = selectedCallsign.value
-        selectedController.value.timestamp = new Date().toISOString() // Reset timestamp
-
-        console.log("Saving: ", selectedController.value.name, ", time: ", selectedController.value.timestamp);
-        console.log("after active controllers list:", activeControllers.value);
-        
-
-        activeControllers.value.push(selectedController.value)
-
-        showPositionDialog.value = false
-        saveControllers(selectedController.value)
-    }
-}
-
-// Remove the controller from its original column
-function removeFromColumn(controller: controller_t, source: state_t) {
-    if (source === 'position') {
-        activeControllers.value = activeControllers.value.filter(c => c.CID !== controller.CID)
-    } else if (source === 'paus') {
-        controllerNames.value = controllerNames.value.filter(c => c.CID !== controller.CID)
-    } else if (source === 'away') {
-        awayControllers.value = awayControllers.value.filter(c => c.CID !== controller.CID)
-    }
-}
-
-// Dynamically assign the border color using CSS variables
-function getBorderColor(rating: string) {
-    let color;
-    switch (rating) {
-        case 'S1':
-            color = 'red';
-            break;
-        case 'S2':
-            color = 'blue';
-            break;
-        case 'S3':
-            color = 'green';
-            break;
-        case 'C1':
-            color = 'yellow';
-            break;
-        default:
-            color = 'grey';
-    }
-    return { '--v-border-color': color, border: '4px solid var(--v-border-color)' };
-}
-
-// Compute the time difference between now and a given timestamp
 function formatTimeDifference(timestamp: string) {
-    if (!timestamp) return '--:--:--';
+  if (!timestamp) return "--:--:--"
 
-    const now = moment();
-    const timeDiff = moment.duration(now.diff(moment(timestamp)));
+  const now = moment()
+  const timeDifference = moment.duration(now.diff(moment(timestamp)))
 
-    const hours = String(Math.floor(timeDiff.asHours())).padStart(2, '0');
-    const minutes = String(Math.floor(timeDiff.minutes())).padStart(2, '0');
-    const seconds = String(Math.floor(timeDiff.seconds())).padStart(2, '0');
+  const hours = String(Math.floor(timeDifference.asHours())).padStart(2, "0")
+  const minutes = String(Math.floor(timeDifference.minutes())).padStart(2, "0")
+  const seconds = String(Math.floor(timeDifference.seconds())).padStart(2, "0")
 
-    return `${hours}:${minutes}:${seconds}`;
+  return `${hours}:${minutes}:${seconds}`
 }
-
 
 // TODO: type this correctly? https://developer.mozilla.org/en-US/docs/Web/API/clearInterval#intervalid
-let refreshIntervalID: string | number | NodeJS.Timeout;
+let refreshInterval: string | number | NodeJS.Timeout
 
 // Refresh the displayed time every second
 function refreshTime() {
-    refreshIntervalID = setInterval(() => {
-        activeControllers.value = [...activeControllers.value]
-        controllerNames.value = [...controllerNames.value]
-        awayControllers.value = [...awayControllers.value]
-    }, 1000);
+  refreshInterval = setInterval(() => {
+    activeControllers.value = [ ...activeControllers.value ]
+    controllerNames.value = [ ...controllerNames.value ]
+    awayControllers.value = [ ...awayControllers.value ]
+  }, 1000)
+}
+
+function onDragStart(controller: Controller) {
+  backupActiveControllers.value = activeControllers.value
+  backupControllerNames.value = controllerNames.value
+  backupAwayControllers.value = awayControllers.value
+
+  selectedController.value = controller
 }
 
 // Fetch data from the server when the component is mounted
 onMounted(() => {
-    fetchControllers();
-    refreshTime();
+  fetchControllers()
+  refreshTime()
 })
 
 onUnmounted(() => {
-    clearInterval(refreshIntervalID)
+  clearInterval(refreshInterval)
 })
+
+function onAddPosition() {
+  backupControllers.value = true
+  showPositionDialog.value = true
+}
+
+function confirmPosition() {
+  if(selectedController.value) {
+    const controller = activeControllers.value.find(controller => controller.CID === selectedController.value?.CID)
+    if(controller) {
+      controller.position = selectedPosition.value
+      controller.callsign = selectedCallsign.value
+      controller.timestamp = new Date().toISOString()
+    }
+
+    saveControllers(selectedController.value)
+
+    selectedController.value = null
+    backupControllers.value = false
+
+    selectedPosition.value = ""
+    selectedCallsign.value = ""
+
+    showPositionDialog.value = false
+  }
+}
+
+function onAddPause() {
+  backupControllers.value = true
+  showPauseDialog.value = true
+}
+
+function confirmPause() {
+  if(selectedController.value) {
+    const controller = controllerNames.value.find(controller => controller.CID === selectedController.value?.CID)
+    if(controller) {
+      controller.position = ""
+      controller.timestamp = new Date().toISOString()
+    }
+
+    saveControllers(selectedController.value)
+
+    showPauseDialog.value = false
+    selectedController.value = null
+    backupControllers.value = false
+  }
+}
+
+function onAddAway() {
+  backupControllers.value = true
+  showAwayDialog.value = true
+}
+
+function confirmAway() {
+  if(selectedController.value) {
+    const controller = awayControllers.value.find(controller => controller.CID === selectedController.value?.CID)
+    if(controller) {
+      controller.position = freeTextPositon.value
+      controller.timestamp = new Date().toISOString()
+    }
+
+    saveControllers(selectedController.value)
+
+    backupControllers.value = false
+    showAwayDialog.value = false
+    selectedController.value = null
+
+    freeTextPositon.value = ""
+  }
+}
+
+function cancelAction() {
+  if(backupControllers.value) {
+    activeControllers.value = backupActiveControllers.value!  
+    controllerNames.value = backupControllerNames.value!  
+    awayControllers.value = backupAwayControllers.value!
+  }
+
+  backupControllers.value = false
+  selectedController.value = null
+
+  showPauseDialog.value = false
+  showPositionDialog.value = false
+  showAwayDialog.value = false
+
+  freeTextPositon.value = ""
+}
+
+function onRemove() {
+  if(backupControllers.value) {
+    return
+  }
+
+  if(selectedController.value) {
+    saveControllers(selectedController.value)
+  }
+}
+
+function onUpdate() {
+  if(selectedController.value) {
+    saveControllers(selectedController.value)
+  }
+
+  sortControllerSessions()
+}
+
+function calculateSessionLength(timestamp: string) {
+  const now = moment()
+  const start = moment(timestamp)
+  return moment.duration(now.diff(start)).asSeconds()
+}
+
+function sortControllerSessions() {
+  activeControllers.value = [ ...activeControllers.value ].sort((a, b) => calculateSessionLength(a.timestamp) - calculateSessionLength(b.timestamp))
+  controllerNames.value = [ ...controllerNames.value ].sort((a, b) => calculateSessionLength(a.timestamp) - calculateSessionLength(b.timestamp))
+  awayControllers.value = [ ...awayControllers.value ].sort((a, b) => calculateSessionLength(a.timestamp) - calculateSessionLength(b.timestamp))
+}
+
+function getBorderColor(rating: string) {
+  let color;
+
+  switch(rating) {
+    case "S1":
+      color = "red"
+      break
+    case "S2":
+      color = "blue"
+      break
+    case "S3":
+      color = "green"
+      break
+    case "C1":
+      color = "yellow"
+      break
+    default:
+      color = "grey"
+  }
+
+  return { "--v-border-color": color, borderLeft: "10px solid var(--v-border-color)" }
+}
 </script>
 
 <style scoped>
-.border-card {
-    border-radius: 8px;
-}
+  .ghost {
+    opacity: 50%;
+  }
+
+  .bg-grey {
+    background-color: #AAA !important;
+  }
+
+  .white-bg {
+    background-color: #ECECEC;
+    color: #000;
+  }
+
+  .border-row {
+    margin: 0;
+  }
+
+  .border-cell {
+    border: 0.5px solid #BBBBBB;
+    text-align: center;
+    padding: 3px !important;
+  }
+
+  .no-border-left {
+    border-left: none;
+  }
+
+  .no-border-right {
+    border-right: none;
+  }
+
+  .no-border-bottom {
+    border-bottom: none;
+  }
+
+  .no-border-top {
+    border-top: none;
+  }
+
+  .v-card-text {
+    padding: 0 !important;
+  }
 </style>

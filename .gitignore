@@ -24,3 +24,4 @@ pnpm-debug.log*
 
 tsconfig.tsbuildinfo
 test-result*.xml
+run API.bat

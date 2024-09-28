@@ -1,4 +1,4 @@
 @echo off
-cd C:\Users\Lenovo\Documents\GitHub\vatscoutPLS\API
+cd C:\Users\maxlk\Documents\GitHub\vatpls\API
 node server.js
 pause

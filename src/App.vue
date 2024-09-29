@@ -23,13 +23,13 @@
             v-for="controller in activeControllers"
             :key="controller.CID"
             class="cursor-move white-bg lighten-5 mb-2"
-            :style="getBorderColor(controller.rating)"
+            :style="getBorderColor(controller)"
             @dragstart="onDragStart(controller)"
           >
             <v-card-text class="pa-1">
               <v-row no-gutters class="border-row">
                 <v-col cols="4" class="border-cell no-border-left no-border-top">
-                  <v-tooltip top text="{{ controller.name }}">
+                  <v-tooltip location="top" text="{{ controller.name }}">
                     <template v-slot:activator="{ props }">
                       <div v-bind="props">{{ controller.sign }} ({{ controller.CID }})</div>
                     </template>
@@ -39,7 +39,9 @@
                 <v-col cols="4" class="border-cell no-border-top">
                   {{ controller.position }}
                 </v-col>
-                <v-col cols="4" class="border-cell no-border-right no-border-top">
+                <v-col cols="4"
+                class="border-cell no-border-right no-border-top"
+                :style="controller.timestamp ? getSessionBorder(controller.timestamp) : ' '">
                   {{ formatTimeDifference(controller.timestamp) }}
                 </v-col>
               </v-row>
@@ -73,14 +75,14 @@
           <div
             v-for="controller in controllerNames"
             :key="controller.CID"
-            :style="getBorderColor(controller.rating)"
+            :style="getBorderColor(controller)"
             class="cursor-move white-bg lighten-5 mb-2"
             @dragstart="onDragStart(controller)"
           >
             <v-card-text class="pa-1">
               <v-row no-gutters class="border-row">
                 <v-col cols="4" class="border-cell no-border-left no-border-top">
-                  <v-tooltip top text="{{ controller.name }}">
+                  <v-tooltip location="top" text="{{ controller.name }}">
                     <template v-slot:activator="{ props }">
                       <div v-bind="props">{{ controller.sign }} ({{ controller.CID }})</div>
                     </template>
@@ -122,14 +124,14 @@
           <div
             v-for="controller in awayControllers"
             :key="controller.CID"
-            :style="getBorderColor(controller.rating)"
+            :style="getBorderColor(controller)"
             class="cursor-move white-bg lighten-5 mb-2"
             @dragstart="onDragStart(controller)"
           >
             <v-card-text class="pa-1">
               <v-row no-gutters class="border-row">
                 <v-col cols="4" class="border-cell no-border-left no-border-top">
-                  <v-tooltip top text="{{ controller.name }}">
+                  <v-tooltip location="top" text="{{ controller.name }}">
                     <template v-slot:activator="{ props }">
                       <div v-bind="props">{{ controller.sign }} ({{ controller.CID }})</div>
                     </template>
@@ -491,27 +493,65 @@ function sortControllerSessions() {
   awayControllers.value = [ ...awayControllers.value ].sort((a, b) => calculateSessionLength(a.timestamp) - calculateSessionLength(b.timestamp))
 }
 
-function getBorderColor(rating: string) {
-  let color;
+const getSessionBorder = (sessionLength: string) => {
+  const totalMinutes = calculateSessionLength(sessionLength) / 60;
 
-  switch(rating) {
-    case "S1":
-      color = "red"
-      break
-    case "S2":
-      color = "blue"
-      break
-    case "S3":
-      color = "green"
-      break
-    case "C1":
-      color = "yellow"
-      break
-    default:
-      color = "grey"
+  //Session thresholds
+  const longSessionThreshold = 120;
+  const mediumSessionThreshold = 15;
+
+  // Background color 
+  const longSessionColor = "#C70039";
+  const mediumSessionColor = "#FFC300";
+
+  // Text color
+  const longSessionTextColor = "white";
+  const mediumSessionTextColor = "black";
+
+  let bgColor, txtColor;
+
+  if (longSessionThreshold < totalMinutes)  {
+    bgColor = longSessionColor;
+    txtColor = longSessionTextColor;
+  }
+  else if (mediumSessionThreshold < totalMinutes) {
+     bgColor = mediumSessionColor;
+     txtColor = mediumSessionTextColor;
   }
 
-  return { "--v-border-color": color, borderLeft: "10px solid var(--v-border-color)" }
+  // If these have not been assigned, style wont be changed.
+  if (!bgColor) return "";
+
+  return [ 
+    {background: bgColor},
+    {color: txtColor},
+    {'font-weight': "bold"},
+  ];
+
+};
+
+function getBorderColor(ctrl: Controller) {
+
+  let ratingColor;
+
+  switch(ctrl.rating) {
+    case "S1":
+      ratingColor = "red"
+      break
+    case "S2":
+      ratingColor = "blue"
+      break
+    case "S3":
+      ratingColor = "green"
+      break
+    case "C1":
+      ratingColor = "yellow"
+      break
+    default:
+      ratingColor = "grey"
+  }
+
+  return { "--v-border-color": ratingColor, borderLeft: "10px solid var(--v-border-color)" }
 }
 </script>
 

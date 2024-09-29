@@ -501,11 +501,11 @@ const getSessionBorder = (sessionLength: string) => {
   const mediumSessionThreshold = 90;
 
   // Background color 
-  const longSessionColor = "#C70039";
-  const mediumSessionColor = "#FFC300";
+  const longSessionColor = "#CC3300";
+  const mediumSessionColor = "#FFCC00";
 
   // Text color
-  const longSessionTextColor = "white";
+  const longSessionTextColor = "black";
   const mediumSessionTextColor = "black";
 
   let bgColor, txtColor;

@@ -498,7 +498,7 @@ const getSessionBorder = (sessionLength: string) => {
 
   //Session thresholds
   const longSessionThreshold = 120;
-  const mediumSessionThreshold = 15;
+  const mediumSessionThreshold = 90;
 
   // Background color 
   const longSessionColor = "#C70039";

@@ -27,10 +27,11 @@
           <div
             v-for="controller in activeControllers"
             :key="controller.CID"
-            class="cursor-move white-bg lighten-5 mb-2"
+            class="cursor-move white-bg lighten-5 mb-2 position-relative"
             :style="getBorderColor(controller)"
             @dragstart="onDragStart(controller)"
           >
+            <div class="controller-rating" :style="getBorderTextColor(controller)">{{ controller.rating }}</div>
             <v-card-text class="pa-1">
               <v-row no-gutters class="border-row">
                 <v-col cols="4" class="border-cell no-border-left no-border-top">
@@ -81,9 +82,10 @@
             v-for="controller in controllerNames"
             :key="controller.CID"
             :style="getBorderColor(controller)"
-            class="cursor-move white-bg lighten-5 mb-2"
+            class="cursor-move white-bg lighten-5 mb-2 position-relative"
             @dragstart="onDragStart(controller)"
           >
+            <div class="controller-rating" :style="getBorderTextColor(controller)">{{ controller.rating }}</div>
             <v-card-text class="pa-1">
               <v-row no-gutters class="border-row">
                 <v-col cols="4" class="border-cell no-border-left no-border-top">
@@ -130,9 +132,10 @@
             v-for="controller in awayControllers"
             :key="controller.CID"
             :style="getBorderColor(controller)"
-            class="cursor-move white-bg lighten-5 mb-2"
+            class="cursor-move white-bg lighten-5 mb-2 position-relative"
             @dragstart="onDragStart(controller)"
           >
+            <div class="controller-rating" :style="getBorderTextColor(controller)">{{ controller.rating }}</div>
             <v-card-text class="pa-1">
               <v-row no-gutters class="border-row">
                 <v-col cols="4" class="border-cell no-border-left no-border-top">
@@ -703,6 +706,11 @@ function getBorderColor(ctrl: Controller) {
 
   return { "--v-border-color": ratingColor, borderLeft: "15px solid var(--v-border-color)" }
 }
+
+function getBorderTextColor(ctrl: Controller) {
+  if(ctrl.rating === "C1") return { color: "#000" };
+  return { color: "#FFF" };
+}
 </script>
 
 <style scoped>
@@ -717,6 +725,20 @@ function getBorderColor(ctrl: Controller) {
   .white-bg {
     background-color: #ECECEC;
     color: #000;
+  }
+
+  .controller-rating {
+    position: absolute;
+    top: 40%;
+    left: 2px;
+    transform: rotate(-90deg);
+    transform-origin: left bottom;
+    white-space: nowrap;
+    font-size: 12px;
+    font-weight: bold;
+    color: #FFF;
+    background-color: transparent;
+    padding-left: 5px;
   }
 
   .border-row {

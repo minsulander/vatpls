@@ -25,8 +25,9 @@ let awayControllers = [];
 
 // Define existing controllers that are already added
 let predefinedControllers = [
-    { name: 'Test1', sign: 'T1', CID: '821932', rating: 'S1', callsign: 'CTR1', frequency: '123.45', position: 'Ground', timestamp: new Date().toISOString() },
-    { name: 'Test2', sign: 'T2', CID: '931204', rating: 'C1', callsign: 'CTR2', frequency: '123.90', position: 'Ground', timestamp: new Date().toISOString() }
+    { name: 'Max Mustermann', sign: 'T1', CID: '821932', rating: 'S1', callsign: 'CTR1', frequency: '123.45', position: 'Ground', timestamp: new Date().toISOString() },
+    { name: 'Max Kuhla', sign: 'MK', CID: '1157126', rating: 'S1', callsign: '', frequency: '', position: '', timestamp: new Date().toISOString() },
+    { name: 'Test Testsson', sign: 'T2', CID: '931204', rating: 'C1', callsign: 'CTR2', frequency: '123.90', position: 'Ground', timestamp: new Date().toISOString() }
 ]
 
 // GET route to retrieve controllers

@@ -2,11 +2,11 @@
   <v-container fluid class="pa-5">
     <!-- Button to Add or Remove Controller -->
     <div class="d-flex flex-row ga-3 mb-3 justify-end">      
-      <v-btn v-if="activeSession" @click="showDeleteControllerDialog = true" color="error" variant="tonal">
-        Gå av
-      </v-btn>
-      <v-btn v-else @click="showControllerDialog = true" color="primary" variant="tonal">
+      <v-btn @click="showControllerDialog = true" color="primary" variant="tonal">
         Gå på
+      </v-btn>
+      <v-btn @click="showDeleteControllerDialog = true" color="error" variant="tonal">
+        Gå av
       </v-btn>
     </div>
 
@@ -34,18 +34,18 @@
             <div class="controller-rating" :style="getBorderTextColor(controller)">{{ controller.rating }}</div>
             <v-card-text class="pa-1">
               <v-row no-gutters class="border-row">
-                <v-col cols="4" class="border-cell no-border-left no-border-top">
+                <v-col cols="6" class="border-cell no-border-left no-border-top">
                   <v-tooltip location="top" text="{{ controller.name }}">
                     <template v-slot:activator="{ props }">
-                      <div v-bind="props">{{ controller.sign }} ({{ controller.CID }})</div>
+                      <div v-bind="props">{{ controller.name }} ({{ controller.CID }})</div>
                     </template>
-                    <span>{{ controller.name }}</span>
+                    <span>{{ controller.sign }}</span>
                   </v-tooltip>
                 </v-col>
                 <v-col cols="4" class="border-cell no-border-top">
                   {{ controller.position }}
                 </v-col>
-                <v-col cols="4"
+                <v-col cols="2"
                 class="border-cell no-border-right no-border-top"
                 :style="controller.timestamp ? getSessionBorder(controller.timestamp) : ' '">
                   {{ formatTimeDifference(controller.timestamp) }}
@@ -88,18 +88,18 @@
             <div class="controller-rating" :style="getBorderTextColor(controller)">{{ controller.rating }}</div>
             <v-card-text class="pa-1">
               <v-row no-gutters class="border-row">
-                <v-col cols="4" class="border-cell no-border-left no-border-top">
+                <v-col cols="6" class="border-cell no-border-left no-border-top">
                   <v-tooltip location="top" text="{{ controller.name }}">
                     <template v-slot:activator="{ props }">
-                      <div v-bind="props">{{ controller.sign }} ({{ controller.CID }})</div>
+                      <div v-bind="props">{{ controller.name }} ({{ controller.CID }})</div>
                     </template>
-                    <span>{{ controller.name }}</span>
+                    <span>{{ controller.sign }}</span>
                   </v-tooltip>
                 </v-col>
                 <v-col cols="4" class="border-cell no-border-top">
                   Paus
                 </v-col>
-                <v-col cols="4" class="border-cell no-border-right no-border-top">
+                <v-col cols="2" class="border-cell no-border-right no-border-top">
                   {{ formatTimeDifference(controller.timestamp) }}
                 </v-col>
               </v-row>
@@ -138,18 +138,18 @@
             <div class="controller-rating" :style="getBorderTextColor(controller)">{{ controller.rating }}</div>
             <v-card-text class="pa-1">
               <v-row no-gutters class="border-row">
-                <v-col cols="4" class="border-cell no-border-left no-border-top">
+                <v-col cols="6" class="border-cell no-border-left no-border-top">
                   <v-tooltip location="top" text="{{ controller.name }}">
                     <template v-slot:activator="{ props }">
-                      <div v-bind="props">{{ controller.sign }} ({{ controller.CID }})</div>
+                      <div v-bind="props">{{ controller.name }} ({{ controller.CID }})</div>
                     </template>
-                    <span>{{ controller.name }}</span>
+                    <span>{{ controller.sign }}</span>
                   </v-tooltip>
                 </v-col>
                 <v-col cols="4" class="border-cell no-border-top">
                   {{ controller.position || " " }}
                 </v-col>
-                <v-col cols="4" class="border-cell no-border-right no-border-top">
+                <v-col cols="2" class="border-cell no-border-right no-border-top">
                   {{ formatTimeDifference(controller.timestamp) }}
                 </v-col>
               </v-row>
@@ -171,12 +171,12 @@
         <v-card-title>Gå på pass</v-card-title>
         <v-card-text>
           <v-form ref="controllerForm">
-            <v-text-field v-model="newController.CID" label="CID"></v-text-field>
-            <p v-if="controllerMatch()" class="ml-4">{{ foundController?.sign }} hittad</p>
+            <v-text-field v-model="newController.CID" label="CID" autofocus></v-text-field>
+            <p v-if="controllerMatch()" class="ml-4">{{ isActiveController(newController) ? "Kontroller är redan aktiv." : foundController?.name + " hittad" }}</p>
             <p v-else-if="newController.CID.length > 0" class="ml-4">Inkorrekt CID</p>
             <v-card-actions>
-              <v-btn v-if="controllerMatch()" color="primary" @click="startSession">Gå på</v-btn>
-              <v-btn v-if="!controllerMatch()" color="primary" @click="showNewControllerDialog = true">Ny flygledare</v-btn>
+              <v-btn v-if="controllerMatch() && !isActiveController(newController)" color="primary" @click="startSession">Gå på</v-btn>
+              <v-btn v-if="!controllerMatch() && !isActiveController(newController)" color="primary" @click="showNewControllerDialog = true">Ny flygledare</v-btn>
               <v-btn text @click="showControllerDialog = false, newController.CID = ''">Cancel</v-btn>
             </v-card-actions>
           </v-form>
@@ -190,7 +190,7 @@
         <v-card-title>Lägg till ny flygledare</v-card-title>
         <v-card-text>
           <v-form ref="newControllerForm">
-            <v-text-field v-model="newController.name" label="Full Name"></v-text-field>
+            <v-text-field v-model="newController.name" label="Full Name" autofocus></v-text-field>
             <v-text-field v-model="newController.sign" label="Sign (2 letters)"></v-text-field>
             <v-text-field v-model="newController.CID" label="CID"></v-text-field>
             <v-select v-model="newController.rating" :items="ratings" label="Rating"></v-select>
@@ -210,8 +210,8 @@
         <v-card-title>Gå av pass</v-card-title>
         <v-card-text>
           <v-form ref="removeControllerForm">
-            <v-text-field v-model="newController.CID" label="CID"></v-text-field>
-            <p v-if="controllerMatchLogoff()" class="ml-4">{{ foundController?.sign }} hittad</p>
+            <v-text-field v-model="newController.CID" label="CID" autofocus></v-text-field>
+            <p v-if="controllerMatchLogoff()" class="ml-4">{{ foundController?.name }} hittad</p>
             <p v-else-if="newController.CID.length > 0" class="ml-4">Inkorrekt CID</p>
             <v-card-actions>
               <v-btn v-if="controllerMatchLogoff()" color="error" @click="stopSession">Gå av</v-btn>
@@ -303,8 +303,6 @@ const selectedControllerToRemove = ref("")
 
 const foundController = ref<Controller | null>(null)
 
-const activeSession = ref(localStorage.getItem("session") === "true" || false)
-
 const activeControllers = ref<Controller[]>([])
 const controllerNames = ref<Controller[]>([])
 const awayControllers = ref<Controller[]>([])
@@ -336,11 +334,14 @@ const newController = ref({
 
 function controllerMatch() {
   const controllersSearch = predefinedControllers.value.filter(controller => controller.CID === newController.value.CID)
+  const allControllersSearch = getAllControllers.value.filter(controller => controller.CID === newController.value.CID)
   if(controllersSearch) {
     foundController.value = controllersSearch[0]
-  }
+  } else if(allControllersSearch) {
+    foundController.value = allControllersSearch[0]
+  } 
 
-  return controllersSearch.length > 0
+  return controllersSearch.length > 0 || allControllersSearch.length > 0
 }
 
 function controllerMatchLogoff() {
@@ -350,6 +351,11 @@ function controllerMatchLogoff() {
   }
 
   return controllersSearch.length > 0
+}
+
+function isActiveController(ctrl: Controller) {
+  if(!ctrl) return false
+  return getAllControllers.value.find(controller => controller.CID === ctrl.CID) || false
 }
 
 async function fetchControllers() {
@@ -417,9 +423,6 @@ function addNewController() {
     timestamp: new Date().toISOString()
   }
 
-  activeSession.value = true
-  localStorage.setItem("session", "true")
-
   showNewControllerDialog.value = false
   showControllerDialog.value = false
 
@@ -448,9 +451,6 @@ function startSession() {
       endorsment: "",
       timestamp: new Date().toISOString()
     }
-
-    activeSession.value = true
-    localStorage.setItem("session", "true")
   }
 
   showControllerDialog.value = false
@@ -465,9 +465,6 @@ function stopSession() {
     awayControllers.value = awayControllers.value.filter(controller => controller.CID !== controllerToRemove?.CID)
 
     saveControllers(controllerToRemove)
-
-    activeSession.value = false
-    localStorage.setItem("session", "false")
   }
 
   newController.value = {

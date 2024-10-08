@@ -6,6 +6,7 @@ node_modules
 # local env files
 .env.local
 .env.*.local
+*.env
 
 # Log files
 npm-debug.log*
@@ -25,3 +26,4 @@ pnpm-debug.log*
 tsconfig.tsbuildinfo
 test-result*.xml
 run API.bat
+API/build

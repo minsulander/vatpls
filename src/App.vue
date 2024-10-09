@@ -1,9 +1,14 @@
 <template>
-  <!-- Button to Add New Controller -->
   <v-container fluid class="pa-5">
-    <v-btn @click="showNewControllerDialog = true" color="primary" variant="tonal" class="mb-4">
-      Ny flygledare
-    </v-btn>
+    <!-- Button to Add or Remove Controller -->
+    <div class="d-flex flex-row ga-3 mb-3 justify-end">      
+      <v-btn @click="showControllerDialog = true" color="primary" variant="tonal">
+        Gå på
+      </v-btn>
+      <v-btn @click="showDeleteControllerDialog = true" color="error" variant="tonal">
+        Gå av
+      </v-btn>
+    </div>
 
     <v-row class="d-flex">
       <!-- Left Column: Position (Active Controllers) -->
@@ -12,7 +17,7 @@
         <VueDraggable
           class="d-flex flex-column gap-2 pa-4 h-100 bg-grey darken-3 overflow-auto"
           v-model="activeControllers"
-          animation="150"
+          animation="100"
           ghostClass="ghost"
           group="tasks"
           @update="onUpdate"
@@ -22,24 +27,25 @@
           <div
             v-for="controller in activeControllers"
             :key="controller.CID"
-            class="cursor-move white-bg lighten-5 mb-2"
+            class="cursor-move white-bg lighten-5 mb-2 position-relative"
             :style="getBorderColor(controller)"
             @dragstart="onDragStart(controller)"
           >
+            <div class="controller-rating" :style="getBorderTextColor(controller)">{{ controller.rating }}</div>
             <v-card-text class="pa-1">
               <v-row no-gutters class="border-row">
-                <v-col cols="4" class="border-cell no-border-left no-border-top">
+                <v-col cols="6" class="border-cell no-border-left no-border-top">
                   <v-tooltip location="top" text="{{ controller.name }}">
                     <template v-slot:activator="{ props }">
-                      <div v-bind="props">{{ controller.sign }} ({{ controller.CID }})</div>
+                      <div v-bind="props">{{ controller.name }} ({{ controller.CID }})</div>
                     </template>
-                    <span>{{ controller.name }}</span>
+                    <span>{{ controller.sign }}</span>
                   </v-tooltip>
                 </v-col>
                 <v-col cols="4" class="border-cell no-border-top">
                   {{ controller.position }}
                 </v-col>
-                <v-col cols="4"
+                <v-col cols="2"
                 class="border-cell no-border-right no-border-top"
                 :style="controller.timestamp ? getSessionBorder(controller.timestamp) : ' '">
                   {{ formatTimeDifference(controller.timestamp) }}
@@ -51,7 +57,7 @@
                   {{ controller.endorsment === "NIL" ? " " : controller.endorsment }}
                 </v-col>
                 <v-col cols="6" class="border-cell no-border-right no-border-bottom">
-                  {{ controller.callsign }}
+                  {{ controller.callsign.length > 0 ? controller.callsign : "&nbsp;" }}
                 </v-col>
               </v-row>
             </v-card-text>
@@ -65,7 +71,7 @@
         <VueDraggable
           class="d-flex flex-column gap-2 pa-4 h-100 bg-grey darken-3 overflow-auto"
           v-model="controllerNames"
-          animation="150"
+          animation="100"
           ghostClass="ghost"
           group="tasks"
           @update="onUpdate"
@@ -76,23 +82,24 @@
             v-for="controller in controllerNames"
             :key="controller.CID"
             :style="getBorderColor(controller)"
-            class="cursor-move white-bg lighten-5 mb-2"
+            class="cursor-move white-bg lighten-5 mb-2 position-relative"
             @dragstart="onDragStart(controller)"
           >
+            <div class="controller-rating" :style="getBorderTextColor(controller)">{{ controller.rating }}</div>
             <v-card-text class="pa-1">
               <v-row no-gutters class="border-row">
-                <v-col cols="4" class="border-cell no-border-left no-border-top">
+                <v-col cols="6" class="border-cell no-border-left no-border-top">
                   <v-tooltip location="top" text="{{ controller.name }}">
                     <template v-slot:activator="{ props }">
-                      <div v-bind="props">{{ controller.sign }} ({{ controller.CID }})</div>
+                      <div v-bind="props">{{ controller.name }} ({{ controller.CID }})</div>
                     </template>
-                    <span>{{ controller.name }}</span>
+                    <span>{{ controller.sign }}</span>
                   </v-tooltip>
                 </v-col>
                 <v-col cols="4" class="border-cell no-border-top">
                   Paus
                 </v-col>
-                <v-col cols="4" class="border-cell no-border-right no-border-top">
+                <v-col cols="2" class="border-cell no-border-right no-border-top">
                   {{ formatTimeDifference(controller.timestamp) }}
                 </v-col>
               </v-row>
@@ -114,7 +121,7 @@
         <VueDraggable
           class="d-flex flex-column gap-2 pa-4 h-100 bg-grey darken-3 overflow-auto"
           v-model="awayControllers"
-          animation="150"
+          animation="100"
           ghostClass="ghost"
           group="tasks"
           @update="onUpdate"
@@ -125,23 +132,24 @@
             v-for="controller in awayControllers"
             :key="controller.CID"
             :style="getBorderColor(controller)"
-            class="cursor-move white-bg lighten-5 mb-2"
+            class="cursor-move white-bg lighten-5 mb-2 position-relative"
             @dragstart="onDragStart(controller)"
           >
+            <div class="controller-rating" :style="getBorderTextColor(controller)">{{ controller.rating }}</div>
             <v-card-text class="pa-1">
               <v-row no-gutters class="border-row">
-                <v-col cols="4" class="border-cell no-border-left no-border-top">
+                <v-col cols="6" class="border-cell no-border-left no-border-top">
                   <v-tooltip location="top" text="{{ controller.name }}">
                     <template v-slot:activator="{ props }">
-                      <div v-bind="props">{{ controller.sign }} ({{ controller.CID }})</div>
+                      <div v-bind="props">{{ controller.name }} ({{ controller.CID }})</div>
                     </template>
-                    <span>{{ controller.name }}</span>
+                    <span>{{ controller.sign }}</span>
                   </v-tooltip>
                 </v-col>
                 <v-col cols="4" class="border-cell no-border-top">
                   {{ controller.position || " " }}
                 </v-col>
-                <v-col cols="4" class="border-cell no-border-right no-border-top">
+                <v-col cols="2" class="border-cell no-border-right no-border-top">
                   {{ formatTimeDifference(controller.timestamp) }}
                 </v-col>
               </v-row>
@@ -158,13 +166,31 @@
       </v-col>
     </v-row>
 
+    <v-dialog v-model="showControllerDialog" max-width="500">
+      <v-card>
+        <v-card-title>Gå på pass</v-card-title>
+        <v-card-text>
+          <v-form ref="controllerForm">
+            <v-text-field v-model="newController.CID" label="CID" autofocus></v-text-field>
+            <p v-if="controllerMatch()" class="ml-4">{{ isActiveController(newController) ? "Kontroller är redan aktiv." : foundController?.name + " hittad" }}</p>
+            <p v-else-if="newController.CID.length > 0" class="ml-4">Inkorrekt CID</p>
+            <v-card-actions>
+              <v-btn v-if="controllerMatch() && !isActiveController(newController)" color="primary" @click="startSession">Gå på</v-btn>
+              <v-btn v-if="!controllerMatch() && !isActiveController(newController)" color="primary" @click="showNewControllerDialog = true">Ny flygledare</v-btn>
+              <v-btn text @click="showControllerDialog = false, newController.CID = ''">Cancel</v-btn>
+            </v-card-actions>
+          </v-form>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+
     <!-- Dialog for Adding a New Controller -->
     <v-dialog v-model="showNewControllerDialog" max-width="500">
       <v-card>
         <v-card-title>Lägg till ny flygledare</v-card-title>
         <v-card-text>
           <v-form ref="newControllerForm">
-            <v-text-field v-model="newController.name" label="Full Name"></v-text-field>
+            <v-text-field v-model="newController.name" label="Full Name" autofocus></v-text-field>
             <v-text-field v-model="newController.sign" label="Sign (2 letters)"></v-text-field>
             <v-text-field v-model="newController.CID" label="CID"></v-text-field>
             <v-select v-model="newController.rating" :items="ratings" label="Rating"></v-select>
@@ -173,8 +199,26 @@
         </v-card-text>
         <v-card-actions>
           <v-btn color="primary" @click="addNewController">Add</v-btn>
-          <v-btn text @click="showNewControllerDialog = false">Cancel</v-btn>
+          <v-btn text @click="showNewControllerDialog = false, showControllerDialog = false, newController.CID = ''">Cancel</v-btn>
         </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Dialog for Removing an Existing Controller -->
+    <v-dialog v-model="showDeleteControllerDialog" max-width="500">
+      <v-card>
+        <v-card-title>Gå av pass</v-card-title>
+        <v-card-text>
+          <v-form ref="removeControllerForm">
+            <v-text-field v-model="newController.CID" label="CID" autofocus></v-text-field>
+            <p v-if="controllerMatchLogoff()" class="ml-4">{{ foundController?.name }} hittad</p>
+            <p v-else-if="newController.CID.length > 0" class="ml-4">Inkorrekt CID</p>
+            <v-card-actions>
+              <v-btn v-if="controllerMatchLogoff()" color="error" @click="stopSession">Gå av</v-btn>
+              <v-btn text @click="showDeleteControllerDialog = false, newController.CID = ''">Cancel</v-btn>
+            </v-card-actions>
+          </v-form>
+        </v-card-text>
       </v-card>
     </v-dialog>
 
@@ -211,11 +255,11 @@
       <v-card>
           <v-card-title>Ange notis</v-card-title>
           <v-card-text>
-              <v-text-field v-model="freeTextPositon" label="Notis"></v-text-field>
+            <v-text-field v-model="freeTextPositon" label="Notis"></v-text-field>
           </v-card-text>
           <v-card-actions>
-              <v-btn color="primary" @click="confirmAway">Save</v-btn>
-              <v-btn @click="cancelAction">Cancel</v-btn>
+            <v-btn color="primary" @click="confirmAway">Save</v-btn>
+            <v-btn @click="cancelAction">Cancel</v-btn>
           </v-card-actions>
       </v-card>
     </v-dialog>
@@ -243,7 +287,9 @@ const ratings = [ "S1", "S2", "S3", "C1" ]
 const endorsments = [ "NIL", "T2 APS", "T1 TWR", "T1 APP" ]
 const positions = [ "GG AD1", "GG AD2", "GG AD3", "SA AD1", "SA AD2", "SA AD3", "SA AD4", "ACC1", "ACC2", "ACC3", "ACC4", "ACC5", "ACC6", "WS", "Ö1", "Ö2" ]
 
+const showControllerDialog = ref(false)
 const showNewControllerDialog = ref(false)
+const showDeleteControllerDialog = ref(false)
 const showPositionDialog = ref(false)
 const showPauseDialog = ref(false)
 const showAwayDialog = ref(false)
@@ -252,16 +298,27 @@ const selectedPosition = ref("")
 const selectedCallsign = ref("")
 const freeTextPositon = ref("")
 
+const selectedController = ref<Controller | null>(null)
+const selectedControllerToRemove = ref("")
+
+const foundController = ref<Controller | null>(null)
+
 const activeControllers = ref<Controller[]>([])
 const controllerNames = ref<Controller[]>([])
 const awayControllers = ref<Controller[]>([])
+
+const predefinedControllers = ref<Controller[]>([])
+
+const getAllControllers = computed(() => [
+  ...controllerNames.value,
+  ...activeControllers.value,
+  ...awayControllers.value
+])
 
 const backupActiveControllers = ref<Controller[] | null>(null)
 const backupControllerNames = ref<Controller[] | null>(null)
 const backupAwayControllers = ref<Controller[] | null>(null)
 const backupControllers = ref(false)
-
-const selectedController = ref<Controller | null>(null)
 
 const newController = ref({
   name: "",
@@ -274,6 +331,32 @@ const newController = ref({
   endorsment: "",
   timestamp: new Date().toISOString()
 })
+
+function controllerMatch() {
+  const controllersSearch = predefinedControllers.value.filter(controller => controller.CID === newController.value.CID)
+  const allControllersSearch = getAllControllers.value.filter(controller => controller.CID === newController.value.CID)
+  if(controllersSearch) {
+    foundController.value = controllersSearch[0]
+  } else if(allControllersSearch) {
+    foundController.value = allControllersSearch[0]
+  } 
+
+  return controllersSearch.length > 0 || allControllersSearch.length > 0
+}
+
+function controllerMatchLogoff() {
+  const controllersSearch = getAllControllers.value.filter(controller => controller.CID === newController.value.CID)
+  if(controllersSearch) {
+    foundController.value = controllersSearch[0]
+  }
+
+  return controllersSearch.length > 0
+}
+
+function isActiveController(ctrl: Controller) {
+  if(!ctrl) return false
+  return getAllControllers.value.find(controller => controller.CID === ctrl.CID) || false
+}
 
 async function fetchControllers() {
   try {
@@ -288,6 +371,17 @@ async function fetchControllers() {
   }
 
   sortControllerSessions()
+}
+
+async function fetchPredefinedControllers() {
+  try {
+    const response = await fetch("http://localhost:3001/api/predefined")
+    const data = await response.json()
+
+    predefinedControllers.value = data || []
+  } catch(error) {
+    console.error("Error fetching predefined controller data:", error)
+  }
 }
 
 async function saveControllers(movedController: Controller) {
@@ -330,7 +424,65 @@ function addNewController() {
   }
 
   showNewControllerDialog.value = false
+  showControllerDialog.value = false
+
   saveControllers(controllerNames.value.slice(-1)[0])
+}
+
+function startSession() {
+  if(foundController) {
+    controllerNames.value.push({
+      ...foundController.value!,
+      timestamp: new Date().toISOString()
+    })
+
+    saveControllers(foundController.value!)
+
+    foundController.value = null
+
+    newController.value = {
+      name: "",
+      sign: "",
+      CID: "",
+      callsign: "",
+      position: "",
+      frequency: "",
+      rating: "",
+      endorsment: "",
+      timestamp: new Date().toISOString()
+    }
+  }
+
+  showControllerDialog.value = false
+}
+
+function stopSession() {
+  const controllerToRemove = getAllControllers.value.find(controller => controller.CID === newController.value.CID)
+
+  if(controllerToRemove) {
+    activeControllers.value = activeControllers.value.filter(controller => controller.CID !== controllerToRemove?.CID)
+    controllerNames.value = controllerNames.value.filter(controller => controller.CID !== controllerToRemove?.CID)
+    awayControllers.value = awayControllers.value.filter(controller => controller.CID !== controllerToRemove?.CID)
+
+    saveControllers(controllerToRemove)
+  }
+
+  newController.value = {
+    name: "",
+    sign: "",
+    CID: "",
+    callsign: "",
+    position: "",
+    frequency: "",
+    rating: "",
+    endorsment: "",
+    timestamp: new Date().toISOString()
+  }
+
+  foundController.value = null
+
+  selectedControllerToRemove.value = ""
+  showDeleteControllerDialog.value = false
 }
 
 function formatTimeDifference(timestamp: string) {
@@ -369,6 +521,7 @@ function onDragStart(controller: Controller) {
 // Fetch data from the server when the component is mounted
 onMounted(() => {
   fetchControllers()
+  fetchPredefinedControllers()
   refreshTime()
 })
 
@@ -464,9 +617,7 @@ function cancelAction() {
 }
 
 function onRemove() {
-  if(backupControllers.value) {
-    return
-  }
+  if(backupControllers.value) return
 
   if(selectedController.value) {
     saveControllers(selectedController.value)
@@ -531,7 +682,6 @@ const getSessionBorder = (sessionLength: string) => {
 };
 
 function getBorderColor(ctrl: Controller) {
-
   let ratingColor;
 
   switch(ctrl.rating) {
@@ -551,7 +701,12 @@ function getBorderColor(ctrl: Controller) {
       ratingColor = "grey"
   }
 
-  return { "--v-border-color": ratingColor, borderLeft: "10px solid var(--v-border-color)" }
+  return { "--v-border-color": ratingColor, borderLeft: "15px solid var(--v-border-color)" }
+}
+
+function getBorderTextColor(ctrl: Controller) {
+  if(ctrl.rating === "C1") return { color: "#000" };
+  return { color: "#FFF" };
 }
 </script>
 
@@ -567,6 +722,20 @@ function getBorderColor(ctrl: Controller) {
   .white-bg {
     background-color: #ECECEC;
     color: #000;
+  }
+
+  .controller-rating {
+    position: absolute;
+    top: 40%;
+    left: 2px;
+    transform: rotate(-90deg);
+    transform-origin: left bottom;
+    white-space: nowrap;
+    font-size: 12px;
+    font-weight: bold;
+    color: #FFF;
+    background-color: transparent;
+    padding-left: 5px;
   }
 
   .border-row {

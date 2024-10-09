@@ -2,6 +2,8 @@ import cors from "cors";
 import express from "express";
 
 import controllersRoute from './routes/controllers';
+import activityRoute from "./routes/activity";
+import sessionsRoute from "./routes/sessions";
 
 interface Controller {
   name: string;
@@ -39,6 +41,9 @@ let awayControllers: Controller[] = [];
 
 // GET route to retrieve controllers
 app.use("/v2", controllersRoute);
+app.use("/v2", activityRoute);
+app.use("/v2", sessionsRoute);
+
 app.get('/api/controllers', (req: express.Request, res: express.Response) => {
   if (USE_PG_DATABASE) {
     // return getControllers(req, res);

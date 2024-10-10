@@ -11,16 +11,14 @@ services:
       - 5432:5432
     networks:
       - db_network
-
     volumes:
       - storage_postgres:/var/lib/postgresql/data
+      - ./src/migrations:/docker-entrypoint-initdb.d/
 
 # Postgres admin panel image.
   pg-admin:
     container_name: pgadmin_container
     image: dpage/pgadmin4
-    depends_on:
-      - postgres_db
     env_file:
       - .env
 

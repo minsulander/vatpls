@@ -6,23 +6,20 @@ import {
     getController
 } from "../controllers/controller";
 
-const controllersRoute = Router();
 
+const controllersRoute = Router();
 
 controllersRoute.get("/controllers", (req, res) => {
     getControllers(req, res);
 });
 
-
-controllersRoute.post("/controller/add", (req, res) => {
+controllersRoute.post("/controller", (req, res) => {
     addController(req, res);
 });
-
 
 controllersRoute.put("/controller/:id", (req, res) => {
     editController(req, res);
 });
-
 
 controllersRoute.get("/controller/:id", (req, res) => {
     getController(req, res);

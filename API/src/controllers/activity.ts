@@ -21,8 +21,20 @@ export async function getActivityList(req: Request, res: Response) {
         return res.status(500).json({error: error.message });
     }   
 }
+
+// This might be unnessecery, but keeping until further.
+/**
+ * Delete an activity from the active table in database.
+ * It expects a VALID cid in request body. If not valid
+ * returns an error.
+ * @param req 
+ * @param res 
+ * @returns status code + json.
+ */
 export async function deleteActivityList(req: Request, res: Response) {
     const { cid } = req.body;
+
+    if (!cid) return res.status(400).json({ error: "Please include cid field in the body."})
     try {
 
         const success = await removeActivityFromList(cid);
@@ -37,13 +49,19 @@ export async function deleteActivityList(req: Request, res: Response) {
     }   
 }
 
-// Adds the given controller in the activity table.
+/**
+ * Adds the given controller in the activity table.
+ * @param req 
+ * @param res 
+ * @returns 
+ */
 export async function addActivityList(req: Request, res: Response) {
     const { cid, position } = req.body;
     if (!cid || !position) return res.status(400).json({ error: "Please include cid and position field." });
     const active_state = determineState(position);
 
     try {
+        await removeActivityFromList(cid);
         let result;
 
         if (active_state != "ACTIVE") {

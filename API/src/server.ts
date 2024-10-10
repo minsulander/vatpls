@@ -5,6 +5,9 @@ import controllersRoute from './routes/controllers';
 import activityRoute from "./routes/activity";
 import sessionsRoute from "./routes/sessions";
 
+
+// TODO move interface to a sepearate folder...
+// TODO clean up the main file, so that we only have routes in here, keep the old one for testing frontend without database.
 interface Controller {
   name: string;
   sign: string;
@@ -15,8 +18,6 @@ interface Controller {
   position?: string;
   timestamp: string;
 };
-
-const USE_PG_DATABASE = true;
 
 const app = express();
 const port = 3001;
@@ -45,9 +46,6 @@ app.use("/v2", activityRoute);
 app.use("/v2", sessionsRoute);
 
 app.get('/api/controllers', (req: express.Request, res: express.Response) => {
-  if (USE_PG_DATABASE) {
-    // return getControllers(req, res);
-  }
   res.json({
     activeControllers,
     availableControllers,

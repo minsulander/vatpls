@@ -9,10 +9,12 @@ CREATE TABLE IF NOT EXISTS Controller(
 );
 
 CREATE TABLE IF NOT EXISTS Session(
-    cid             VARCHAR(7) PRIMARY KEY REFERENCES Controller(cid),
+    session_id      SERIAL PRIMARY KEY, 
+    cid             VARCHAR(7),
     position        TEXT NOT NULL,
     session_start   TIMESTAMP NOT NULL,
-    session_end     TIMESTAMP
+    session_end     TIMESTAMP,
+    FOREIGN KEY(cid) REFERENCES Controller(cid)
 );
 
 CREATE TYPE STATE AS ENUM

@@ -1,5 +1,5 @@
 <template>
-  <v-container fluid class="pa-5">
+  <v-container fluid class="pa-5 d-flex flex-column" style="height: 100vh;">
     <!-- Button to Add or Remove Controller -->
     <div class="d-flex flex-row ga-3 mb-3 justify-end">      
       <v-btn @click="showControllerDialog = true" color="primary" variant="tonal">
@@ -10,12 +10,12 @@
       </v-btn>
     </div>
 
-    <v-row class="d-flex">
+    <v-row class="d-flex flex-grow-1">
       <!-- Left Column: Position (Active Controllers) -->
-      <v-col>
+      <v-col class="d-flex flex-column">
         <h3>Position</h3>
         <VueDraggable
-          class="d-flex flex-column gap-2 pa-4 h-100 bg-grey darken-3 overflow-auto"
+          class="d-flex flex-column gap-2 pa-4 flex-grow-1 bg-grey darken-3 overflow-auto"
           v-model="activeControllers"
           animation="100"
           ghostClass="ghost"
@@ -66,10 +66,10 @@
       </v-col>
 
       <!-- Middle Column: Paus (Available Controllers) -->
-      <v-col>
+      <v-col class="d-flex flex-column">
         <h3>Paus</h3>
         <VueDraggable
-          class="d-flex flex-column gap-2 pa-4 h-100 bg-grey darken-3 overflow-auto"
+          class="d-flex flex-column gap-2 pa-4 flex-grow-1 bg-grey darken-3 overflow-auto"
           v-model="controllerNames"
           animation="100"
           ghostClass="ghost"
@@ -116,10 +116,10 @@
       </v-col>
 
       <!-- Right Column: Övrig tid (Away Controllers) -->
-      <v-col>
+      <v-col class="d-flex flex-column">
         <h3>Övrig tid</h3>
         <VueDraggable
-          class="d-flex flex-column gap-2 pa-4 h-100 bg-grey darken-3 overflow-auto"
+          class="d-flex flex-column gap-2 pa-4 flex-grow-1 bg-grey darken-3 overflow-auto"
           v-model="awayControllers"
           animation="100"
           ghostClass="ghost"

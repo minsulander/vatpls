@@ -8,7 +8,11 @@ export async function getActivityList(req: Request, res: Response) {
         const { list } = req.query;
         const state = isState(list);
         
-        if (!state) return res.status(400).json({ error: "please provide a valid state"});
+        if (!state) {
+            const result = await getAllLists();
+            console.log(result);
+            return res.status(200).json(result);
+        };
 
         const result = await query_database(
             `SELECT cid FROM active WHERE in_list = $1`,
@@ -89,6 +93,14 @@ export async function addActivityList(req: Request, res: Response) {
     }   
 }
 
+const getAllLists = async () => {
+    const result = await query_database(
+        `SELECT * FROM active`
+    );
+
+    console.log(result);
+};
+
 const removeActivityFromList = async (cid: string): Promise<boolean> => {
     try {
         const result = await query_database(
@@ -112,6 +124,7 @@ const removeActivityFromList = async (cid: string): Promise<boolean> => {
 };
 
 const isState = (str: any): State | undefined => {
+    if (!str) return undefined;
     str = str.toString().toUpperCase();
 
     if (str === "ACTIVE" || str === "PAUSE" || str === "OTHER") {

@@ -10,8 +10,10 @@ export async function getActivityList(req: Request, res: Response) {
         
         if (!state) {
             const result = await getAllLists();
-            console.log(result);
-            return res.status(200).json(result);
+            if (!result || !result.rowCount) return res.status(400).json({error: "Failed getting all lists"});
+            const orderedresult = orderIntoSeperateLists(result.rowCount, result.rows);
+            console.log(orderedresult);
+            return res.status(200).json(orderedresult);
         };
 
         const result = await query_database(
@@ -54,35 +56,51 @@ export async function deleteActivityList(req: Request, res: Response) {
 }
 
 /**
- * Adds the given controller in the activity table.
- * @param req 
- * @param res 
- * @returns 
+ * Adds the given controller in the activity table
+ * requires cid, 
  */
 export async function addActivityList(req: Request, res: Response) {
-    const { cid, position } = req.body;
-    if (!cid || !position) return res.status(400).json({ error: "Please include cid and position field." });
-    const active_state = determineState(position);
+
+    // Either we move controller to an active, paus or away list.
+    // We require the cid, position and callsign.
+    // Position is GG AD3 for example if its to be placed on active list.
+    // If position is "paus" or "other" controller will be moved to that list instead.
+    const { activeControllers, availableControllers, awayControllers, moved } = req.body;
+    // if (!moved.cid || !moved.position ) return res.status(400).json({ error: "Please include cid and position field." });
+
+    //This is the state where we move the controller.
+    const listToPlaceIn = determineState(activeControllers, availableControllers, awayControllers, moved);
+    if (!listToPlaceIn) return res.status(500).json({ error: "internal server error in finding state"});
+    let updatedController;
+    if (!activeControllers || !availableControllers || !awayControllers) {
+        updatedController = moved;
+    } else {
+      updatedController = findNewController(activeControllers, availableControllers, awayControllers, moved); 
+    }
 
     try {
-        await removeActivityFromList(cid);
+        // Only one entry per controller is allowed, so we remove the old entry first.
+        await removeActivityFromList(updatedController.cid);
         let result;
 
-        if (active_state != "ACTIVE") {
-            const values = [cid, active_state];
+        if (listToPlaceIn != "ACTIVE") {
+            // We don't place into an active position here, so we only need CID and position.
+            const values = [updatedController.cid, updatedController.position, listToPlaceIn];
             result = await query_database(
                 `
                     INSERT INTO active 
-                    (cid, session_start, in_list) VALUES
-                    ($1, NOW(), $2)
+                    (cid, position, session_start, in_list) VALUES
+                    ($1, $2, NOW(), $3)
+
                 `, values);
 
         } else {
-            const values = [cid, position, active_state];
+            const values = [updatedController.cid, updatedController.callsign, updatedController.position, listToPlaceIn, ];
+            
             result = await query_database(
                 `
                     INSERT INTO active VALUES
-                    ($1, $2, NOW(), $3)
+                    ($1, $2, $3, NOW(), $4)
                 `, values);
         }
         return res.status(200).json({ result });
@@ -94,11 +112,22 @@ export async function addActivityList(req: Request, res: Response) {
 }
 
 const getAllLists = async () => {
-    const result = await query_database(
-        `SELECT * FROM active`
+    return await query_database(
+        `
+        select 
+        controller.controller_name as name,
+        controller.sign,
+        active.cid,
+        active.callsign,
+        '123.45' as frequency,
+        active.position,
+        controller.controller_rating as rating,
+        active.session_start as timestamp,
+        active.in_list
+        from controller, active
+        WHERE controller.cid = active.cid;
+    `
     );
-
-    console.log(result);
 };
 
 const removeActivityFromList = async (cid: string): Promise<boolean> => {
@@ -123,6 +152,22 @@ const removeActivityFromList = async (cid: string): Promise<boolean> => {
     }
 };
 
+const orderIntoSeperateLists = (rowCount: number, rows: any[]) => {
+    let activeControllers: any = [];
+    let availableControllers:any = [];
+    let awayControllers:any = [];
+    rows.map((ctrl, idx) => {
+       if (ctrl.in_list === 'ACTIVE') {
+        activeControllers.push(ctrl);
+       } else if (ctrl.in_list === 'PAUSE') {
+        availableControllers.push(ctrl);
+       } else {
+        awayControllers.push(ctrl);
+       }
+    });
+    return {activeControllers, availableControllers, awayControllers};
+};
+
 const isState = (str: any): State | undefined => {
     if (!str) return undefined;
     str = str.toString().toUpperCase();
@@ -134,8 +179,28 @@ const isState = (str: any): State | undefined => {
 };
 
 // Position will be paus or other, if moving to that state.. otherwise ACTIVE position.
-const determineState = (str: string): State => {
-    if(str.toLowerCase() === "paus") return "PAUSE";
-    if(str.toLowerCase() === "other") return "OTHER";
-    else return "ACTIVE"
+const determineState = (active: any[], avail: any[], away: any[], moved: any): State  | undefined => {
+
+    if (active || avail || away) {
+        if (active.find((ctrl) => ctrl.cid === moved.cid)) { 
+            return 'ACTIVE';
+        } else if (avail.find((ctrl) => ctrl.cid === moved.cid)) {
+            console.log("should be here in pause")
+            return "PAUSE";
+        } else if (away.find((ctrl) => ctrl.cid === moved.cid)){
+            return "OTHER";
+        }
+    } else {
+       if(moved.position.toString().toUpperCase() == "OTHER") return "OTHER";
+       else if (moved.position.toString().toUpperCase() == "PAUSE") return "PAUSE";
+       else return "ACTIVE";
+    }
 };
+
+const findNewController = (activeControllers:any , availableControllers: any, awayControllers: any, moved: any) => {
+    return (
+        activeControllers.find((ctrl: any) => ctrl.cid === moved.cid) ||
+        availableControllers.find((ctrl:any) => ctrl.cid === moved.cid) ||
+        awayControllers.find((ctrl: any) => ctrl.cid === moved.cid)
+    );
+}

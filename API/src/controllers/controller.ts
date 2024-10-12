@@ -7,9 +7,10 @@ import { query_database } from '../db/database';
 // Getting all controllers in list.
 export async function getControllers(req: Request, res: Response) {
     try {
-        const result = await query_database("SELECT * FROM Controller;");
+        const result = await query_database("SELECT * FROM controller;");
 
-        return res.json({ rowCount: result.rowCount, rows: result.rows });
+        return res.json({ Controllers: result.rows });
+
     } catch (error: any) {
         return res.status(500).json({error: error.message });
     }   

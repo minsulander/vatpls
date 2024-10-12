@@ -2,10 +2,11 @@
 CREATE OR REPLACE FUNCTION after_delete_insert_into_other_table()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO session (cid, position, session_start, session_end)
+    INSERT INTO session (cid, position, callsign, session_start, session_end)
     VALUES (
         OLD.cid,
-        COALESCE(OLD.position, OLD.in_list),
+        COALESCE(OLD.position::text, OLD.in_list::text),
+        OLD.callsign,
         OLD.session_start,
         NOW());
     RETURN OLD;

@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS Session(
     session_id      SERIAL PRIMARY KEY, 
     cid             VARCHAR(7),
     position        TEXT NOT NULL,
+    callsign        TEXT DEFAULT ' ',
     session_start   TIMESTAMP NOT NULL,
     session_end     TIMESTAMP,
     FOREIGN KEY(cid) REFERENCES Controller(cid)
@@ -22,7 +23,19 @@ CREATE TYPE STATE AS ENUM
 
 CREATE TABLE IF NOT EXISTS Active(
     cid             VARCHAR(7) PRIMARY KEY REFERENCES Controller(cid),
-    position        TEXT NOT NULL,
+    callsign        TEXT,
+    position        TEXT,
     session_start   TIMESTAMP,
     in_list         STATE DEFAULT 'PAUSE'
+);
+
+CREATE TYPE ENDORSEMENT_TYPE AS ENUM(
+    'NIL', 'T2 APS', 'T1 TWR', 'T1 APP' 
+);
+
+CREATE TABLE IF NOT EXISTS Endorsements(
+    cid             VARCHAR(7) NOT NULL,
+    endorsement     ENDORSEMENT_TYPE NOT NULL,
+    PRIMARY KEY(cid, endorsement),
+    FOREIGN KEY(cid) REFERENCES Controller(cid)
 );

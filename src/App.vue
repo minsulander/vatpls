@@ -26,7 +26,7 @@
         >
           <div
             v-for="controller in activeControllers"
-            :key="controller.CID"
+            :key="controller.cid"
             class="cursor-move white-bg lighten-5 mb-2 position-relative"
             :style="getBorderColor(controller)"
             @dragstart="onDragStart(controller)"
@@ -37,7 +37,7 @@
                 <v-col cols="6" class="border-cell no-border-left no-border-top">
                   <v-tooltip location="top" text="{{ controller.name }}">
                     <template v-slot:activator="{ props }">
-                      <div v-bind="props">{{ controller.name }} ({{ controller.CID }})</div>
+                      <div v-bind="props">{{ controller.name }} ({{ controller.cid }})</div>
                     </template>
                     <span>{{ controller.sign }}</span>
                   </v-tooltip>
@@ -80,7 +80,7 @@
         >
           <div
             v-for="controller in controllerNames"
-            :key="controller.CID"
+            :key="controller.cid"
             :style="getBorderColor(controller)"
             class="cursor-move white-bg lighten-5 mb-2 position-relative"
             @dragstart="onDragStart(controller)"
@@ -91,7 +91,7 @@
                 <v-col cols="6" class="border-cell no-border-left no-border-top">
                   <v-tooltip location="top" text="{{ controller.name }}">
                     <template v-slot:activator="{ props }">
-                      <div v-bind="props">{{ controller.name }} ({{ controller.CID }})</div>
+                      <div v-bind="props">{{ controller.name }} ({{ controller.cid }})</div>
                     </template>
                     <span>{{ controller.sign }}</span>
                   </v-tooltip>
@@ -130,7 +130,7 @@
         >
           <div
             v-for="controller in awayControllers"
-            :key="controller.CID"
+            :key="controller.cid"
             :style="getBorderColor(controller)"
             class="cursor-move white-bg lighten-5 mb-2 position-relative"
             @dragstart="onDragStart(controller)"
@@ -141,7 +141,7 @@
                 <v-col cols="6" class="border-cell no-border-left no-border-top">
                   <v-tooltip location="top" text="{{ controller.name }}">
                     <template v-slot:activator="{ props }">
-                      <div v-bind="props">{{ controller.name }} ({{ controller.CID }})</div>
+                      <div v-bind="props">{{ controller.name }} ({{ controller.cid }})</div>
                     </template>
                     <span>{{ controller.sign }}</span>
                   </v-tooltip>
@@ -171,13 +171,13 @@
         <v-card-title>Gå på pass</v-card-title>
         <v-card-text>
           <v-form ref="controllerForm">
-            <v-text-field v-model="newController.CID" label="CID" autofocus></v-text-field>
+            <v-text-field v-model="newController.cid" label="CID" autofocus></v-text-field>
             <p v-if="controllerMatch()" class="ml-4">{{ isActiveController(newController) ? "Kontroller är redan aktiv." : foundController?.name + " hittad" }}</p>
-            <p v-else-if="newController.CID.length > 0" class="ml-4">Inkorrekt CID</p>
+            <p v-else-if="newController.cid.length > 0" class="ml-4">Inkorrekt CID</p>
             <v-card-actions>
               <v-btn v-if="controllerMatch() && !isActiveController(newController)" color="primary" @click="startSession">Gå på</v-btn>
               <v-btn v-if="!controllerMatch() && !isActiveController(newController)" color="primary" @click="showNewControllerDialog = true">Ny flygledare</v-btn>
-              <v-btn text @click="showControllerDialog = false, newController.CID = ''">Cancel</v-btn>
+              <v-btn text @click="showControllerDialog = false, newController.cid = ''">Cancel</v-btn>
             </v-card-actions>
           </v-form>
         </v-card-text>
@@ -192,14 +192,14 @@
           <v-form ref="newControllerForm">
             <v-text-field v-model="newController.name" label="Full Name" autofocus></v-text-field>
             <v-text-field v-model="newController.sign" label="Sign (2 letters)"></v-text-field>
-            <v-text-field v-model="newController.CID" label="CID"></v-text-field>
+            <v-text-field v-model="newController.cid" label="CID"></v-text-field>
             <v-select v-model="newController.rating" :items="ratings" label="Rating"></v-select>
             <v-select v-model="newController.endorsment" :items="endorsments" label="Endorsment"></v-select>
           </v-form>
         </v-card-text>
         <v-card-actions>
           <v-btn color="primary" @click="addNewController">Add</v-btn>
-          <v-btn text @click="showNewControllerDialog = false, showControllerDialog = false, newController.CID = ''">Cancel</v-btn>
+          <v-btn text @click="showNewControllerDialog = false, showControllerDialog = false, newController.cid = ''">Cancel</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -210,12 +210,12 @@
         <v-card-title>Gå av pass</v-card-title>
         <v-card-text>
           <v-form ref="removeControllerForm">
-            <v-text-field v-model="newController.CID" label="CID" autofocus></v-text-field>
+            <v-text-field v-model="newController.cid" label="CID" autofocus></v-text-field>
             <p v-if="controllerMatchLogoff()" class="ml-4">{{ foundController?.name }} hittad</p>
-            <p v-else-if="newController.CID.length > 0" class="ml-4">Inkorrekt CID</p>
+            <p v-else-if="newController.cid.length > 0" class="ml-4">Inkorrekt CID</p>
             <v-card-actions>
               <v-btn v-if="controllerMatchLogoff()" color="error" @click="stopSession">Gå av</v-btn>
-              <v-btn text @click="showDeleteControllerDialog = false, newController.CID = ''">Cancel</v-btn>
+              <v-btn text @click="showDeleteControllerDialog = false, newController.cid = ''">Cancel</v-btn>
             </v-card-actions>
           </v-form>
         </v-card-text>
@@ -274,7 +274,7 @@ import moment from "moment"
 interface Controller {
   name: string;
   sign: string;
-  CID: string;
+  cid: string;
   callsign: string;
   position?: string;
   frequency: string;
@@ -323,7 +323,7 @@ const backupControllers = ref(false)
 const newController = ref({
   name: "",
   sign: "",
-  CID: "",
+  cid: "",
   callsign: "",
   position: "",
   frequency: "",
@@ -333,8 +333,8 @@ const newController = ref({
 })
 
 function controllerMatch() {
-  const controllersSearch = predefinedControllers.value.filter(controller => controller.CID === newController.value.CID)
-  const allControllersSearch = getAllControllers.value.filter(controller => controller.CID === newController.value.CID)
+  const controllersSearch = predefinedControllers.value.filter(controller => controller.cid === newController.value.cid)
+  const allControllersSearch = getAllControllers.value.filter(controller => controller.cid === newController.value.cid)
   if(controllersSearch) {
     foundController.value = controllersSearch[0]
   } else if(allControllersSearch) {
@@ -345,7 +345,7 @@ function controllerMatch() {
 }
 
 function controllerMatchLogoff() {
-  const controllersSearch = getAllControllers.value.filter(controller => controller.CID === newController.value.CID)
+  const controllersSearch = getAllControllers.value.filter(controller => controller.cid === newController.value.cid)
   if(controllersSearch) {
     foundController.value = controllersSearch[0]
   }
@@ -355,10 +355,11 @@ function controllerMatchLogoff() {
 
 function isActiveController(ctrl: Controller) {
   if(!ctrl) return false
-  return getAllControllers.value.find(controller => controller.CID === ctrl.CID) || false
+  return getAllControllers.value.find(controller => controller.cid === ctrl.cid) || false
 }
 
 async function fetchControllers() {
+  // change the address to "/api/controllers" if dev_mode is enabled in api.
   try {
     const response = await fetch("http://localhost:3001/api/controllers")
     const data = await response.json()
@@ -375,16 +376,17 @@ async function fetchControllers() {
 
 async function fetchPredefinedControllers() {
   try {
-    const response = await fetch("http://localhost:3001/api/predefined")
+    const response = await fetch("http://localhost:3001/api/controllers")
     const data = await response.json()
 
-    predefinedControllers.value = data || []
+    predefinedControllers.value = data.Controllers || []
   } catch(error) {
     console.error("Error fetching predefined controller data:", error)
   }
 }
 
 async function saveControllers(movedController: Controller) {
+  // change the address to "/api/controllers" if dev_mode is enabled in api.
   try {
     await fetch("http://localhost:3001/api/controllers", {
       method: "POST",
@@ -414,7 +416,7 @@ function addNewController() {
   newController.value = {
     name: "",
     sign: "",
-    CID: "",
+    cid: "",
     callsign: "",
     position: "",
     frequency: "",
@@ -443,7 +445,7 @@ function startSession() {
     newController.value = {
       name: "",
       sign: "",
-      CID: "",
+      cid: "",
       callsign: "",
       position: "",
       frequency: "",
@@ -457,12 +459,12 @@ function startSession() {
 }
 
 function stopSession() {
-  const controllerToRemove = getAllControllers.value.find(controller => controller.CID === newController.value.CID)
+  const controllerToRemove = getAllControllers.value.find(controller => controller.cid === newController.value.cid)
 
   if(controllerToRemove) {
-    activeControllers.value = activeControllers.value.filter(controller => controller.CID !== controllerToRemove?.CID)
-    controllerNames.value = controllerNames.value.filter(controller => controller.CID !== controllerToRemove?.CID)
-    awayControllers.value = awayControllers.value.filter(controller => controller.CID !== controllerToRemove?.CID)
+    activeControllers.value = activeControllers.value.filter(controller => controller.cid !== controllerToRemove?.cid)
+    controllerNames.value = controllerNames.value.filter(controller => controller.cid !== controllerToRemove?.cid)
+    awayControllers.value = awayControllers.value.filter(controller => controller.cid !== controllerToRemove?.cid)
 
     saveControllers(controllerToRemove)
   }
@@ -470,7 +472,7 @@ function stopSession() {
   newController.value = {
     name: "",
     sign: "",
-    CID: "",
+    cid: "",
     callsign: "",
     position: "",
     frequency: "",
@@ -536,7 +538,7 @@ function onAddPosition() {
 
 function confirmPosition() {
   if(selectedController.value) {
-    const controller = activeControllers.value.find(controller => controller.CID === selectedController.value?.CID)
+    const controller = activeControllers.value.find(controller => controller.cid === selectedController.value?.cid)
     if(controller) {
       controller.position = selectedPosition.value
       controller.callsign = selectedCallsign.value
@@ -562,7 +564,7 @@ function onAddPause() {
 
 function confirmPause() {
   if(selectedController.value) {
-    const controller = controllerNames.value.find(controller => controller.CID === selectedController.value?.CID)
+    const controller = controllerNames.value.find(controller => controller.cid === selectedController.value?.cid)
     if(controller) {
       controller.position = ""
       controller.timestamp = new Date().toISOString()
@@ -583,7 +585,7 @@ function onAddAway() {
 
 function confirmAway() {
   if(selectedController.value) {
-    const controller = awayControllers.value.find(controller => controller.CID === selectedController.value?.CID)
+    const controller = awayControllers.value.find(controller => controller.cid === selectedController.value?.cid)
     if(controller) {
       controller.position = freeTextPositon.value
       controller.timestamp = new Date().toISOString()

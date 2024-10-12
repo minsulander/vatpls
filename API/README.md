@@ -12,6 +12,9 @@ POSTGRES_USER=postgres
 POSTGRES_DB=vatpls
 PGADMIN_DEFAULT_EMAIL=vatpls@vatpls.se
 PGADMIN_DEFAULT_PASSWORD=vatpls01
+PGUSER=postgres
+PGPASSWORD=password
+PGDATABASE=vatpls
 ```
 
 (You can change any of these values)

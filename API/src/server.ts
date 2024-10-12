@@ -6,9 +6,6 @@ import activityRoute from "./routes/activity";
 import sessionsRoute from "./routes/sessions";
 import devRoute from "./routes/development";
 
-// TODO GET /api/controllers get all of the different lists and give a activeControllers.
-// TODO POST /api/controllers update the state of the controller and 
-
 const DEV_MODE = true; // set to true if use system without database, otherwise set false.
 
 const app = express();

@@ -3,8 +3,9 @@ import { addActivityList, getActivityList, deleteActivityList } from '../control
 
 
 const activityRoute = Router();
-/** Return a json with activeControllers, availableControllers, awayControllers if 
- * no query was given otherwise give only that list.
+/** 
+ *  Return a json with activeControllers, availableControllers, awayControllers if 
+ *  no query was given otherwise give only that list.
  */
 activityRoute.get("/activity", (req, res) => {
     // This can handle multiple different queries:

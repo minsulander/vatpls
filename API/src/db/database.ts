@@ -7,18 +7,18 @@ const { Client } = pg;
 
 export const query_database = async (query: string, params?: any[]) => {
     const client = new Client();
-
-    await client.connect();
-
-    let res;
-
     try {
-        res = await client.query(query, params);
-    } catch (error: any) {
-        throw error;
-    }
-
-    await client.end();
+        await client.connect();
     
-    return res;
+        await client.query('BEGIN');
+        const db_response = await client.query(query, params);
+        await client.query("COMMIT");
+
+        return db_response;
+    } catch(e) {
+        await client.query('ROLLBACK');
+        throw e; 
+    } finally {
+        client.end();
+    }
 };

@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { 
-    getControllers,
+    getAllControllers,
     addController,
     editController,
-    getController
+    getOneController
 } from "../controllers/controller";
 
 
@@ -11,7 +11,7 @@ const controllersRoute = Router();
 
 // Returns all of the available controllers.
 controllersRoute.get("/controllers", (req, res) => {
-    getControllers(req, res);
+    getAllControllers(req, res);
 });
 
 controllersRoute.post("/controllers", (req, res) => {
@@ -24,7 +24,7 @@ controllersRoute.put("/controller/:id", (req, res) => {
 
 // Get a specific controller by CID.
 controllersRoute.get("/controller/:id", (req, res) => {
-    getController(req, res);
+    getOneController(req, res);
 });
 
 

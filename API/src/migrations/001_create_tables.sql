@@ -23,8 +23,8 @@ CREATE TYPE STATE AS ENUM
 
 CREATE TABLE IF NOT EXISTS Active(
     cid             VARCHAR(7) PRIMARY KEY REFERENCES Controller(cid),
-    callsign        TEXT,
-    position        TEXT,
+    callsign        TEXT DEFAULT ' ',
+    position        TEXT DEFAULT ' ',
     session_start   TIMESTAMP,
     in_list         STATE DEFAULT 'PAUSE'
 );

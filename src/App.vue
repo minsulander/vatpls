@@ -267,7 +267,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from "vue"
+import { ref, onMounted, onUnmounted, computed, Ref } from "vue"
 import { VueDraggable } from "vue-draggable-plus"
 import moment from "moment"
 
@@ -358,6 +358,12 @@ function isActiveController(ctrl: Controller) {
   return getAllControllers.value.find(controller => controller.cid === ctrl.cid) || false
 }
 
+/**
+ * 
+ * ALL API METHODS
+ *
+ */
+
 async function fetchControllers() {
   // change the address to "/api/controllers" if dev_mode is enabled in api.
   try {
@@ -407,12 +413,47 @@ async function saveControllers(movedController: Controller) {
   sortControllerSessions()
 }
 
-function addNewController() {
-  controllerNames.value.push({
-    ...newController.value,
-    timestamp: new Date().toISOString() // Set timestamp on addition
-  })
+const addControllerToDB = async (newcontroller: Controller) =>  {
 
+  try {
+    await fetch("http://localhost:3001/api/controllers", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(newcontroller)
+    })
+  } catch(error) {
+    console.error("Error saving controller data:", error)
+  }
+  
+}
+
+const deleteControllerAsActive = async (controllerToRemoveCID: string) => {
+  try {
+    await fetch("http://localhost:3001/api/activity", {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        cid: controllerToRemoveCID
+      })
+    })
+  } catch(error) {
+    console.error("Error saving controller data:", error)
+  }
+}  
+
+/**
+ * OTHER
+ */
+
+function addNewController() {
+  const newCreatedController = { ...newController.value, timestamp: new Date().toISOString()}
+  controllerNames.value.push(newCreatedController);
+
+  addControllerToDB(newCreatedController)
   newController.value = {
     name: "",
     sign: "",
@@ -460,6 +501,10 @@ function startSession() {
 
 function stopSession() {
   const controllerToRemove = getAllControllers.value.find(controller => controller.cid === newController.value.cid)
+
+  if (controllerToRemove && controllerToRemove.cid) {
+    deleteControllerAsActive(controllerToRemove.cid);
+  }
 
   if(controllerToRemove) {
     activeControllers.value = activeControllers.value.filter(controller => controller.cid !== controllerToRemove?.cid)
@@ -520,15 +565,65 @@ function onDragStart(controller: Controller) {
   selectedController.value = controller
 }
 
+
+let unsubscribe: undefined | (() => void) ;
+
+/** used to sync controller cards */
+const subscribe = () => {
+
+  const updateControllerList = (toUpdate: Ref<Controller[] | null>, newList: Controller[]) => {
+    if (toUpdate.value) {
+      toUpdate.value.length = 0;
+      toUpdate.value.push(...newList);
+    }
+  };
+
+  const handleSubscriptionData = (rcvdData: any) => {
+    if (
+      showControllerDialog.value == false &&
+      showNewControllerDialog.value == false &&
+      showDeleteControllerDialog.value == false &&
+      showPositionDialog.value == false &&
+      showPauseDialog.value == false &&
+      showAwayDialog.value == false
+    ) {
+      if (rcvdData.activeControllers) {
+        updateControllerList(activeControllers, rcvdData.activeControllers);
+      }
+      if (rcvdData.availableControllers) {
+        updateControllerList(controllerNames, rcvdData.availableControllers);
+      }
+      if (rcvdData.awayControllers) {
+        updateControllerList(awayControllers, rcvdData.awayControllers);
+      }
+    }
+    sortControllerSessions();
+  };
+  
+  const evtSource = new EventSource("http://localhost:3001/subscribe");
+  evtSource.onmessage = (ev) => {
+    handleSubscriptionData(JSON.parse(ev.data));
+  }
+
+  return () => {
+    evtSource.close();
+  };
+};
+
+
 // Fetch data from the server when the component is mounted
 onMounted(() => {
   fetchControllers()
   fetchPredefinedControllers()
   refreshTime()
+  unsubscribe = subscribe();
 })
 
 onUnmounted(() => {
-  clearInterval(refreshInterval)
+  clearInterval(refreshInterval);
+  if (unsubscribe) {
+    unsubscribe();
+  }
 })
 
 function onAddPosition() {

@@ -31,11 +31,135 @@ let predefinedControllers = [
   { name: 'Test Testsson', sign: 'T2', cid: '931204', rating: 'C1', callsign: 'CTR2', frequency: '123.90', position: 'Ground', timestamp: new Date().toISOString() }
 ]
 
+export const getAllControllers = () => {
+  return { activeControllers, availableControllers, awayControllers };
+};
+
 devRoute.get('/controllers', (req: Request, res: Response) => {
   res.json(getAllControllers());
 });
 
+/** Fetch saved/predefined controllers  */
+devRoute.get('/controller/saved', (req, res) => {
+  res.status(200).json({Controllers: predefinedControllers});
+});
+
+devRoute.post('/controller', (req, res) => {
+  const { controller } = req.body;
+  const isValidController = checkControllerValid(controller);
+
+  if (!isValidController) { 
+    res.status(400).json({ error: "Please enter valid controller." });
+    return;
+  }
+  
+  // remove controller from the current state.
+  removeControllerFromCurrentList(isValidController.cid);
+  addControllerToList(controller);
+
+  res.status(201).json({ update: isValidController });
+});
+
+devRoute.post('/controller/new', (req, res) => {
+  const { Controller } = req.body;
+  const isValidController = checkControllerValid(Controller);
+
+  if (!isValidController) { 
+    res.status(400).json({ error: "Please enter valid controller." });
+    return;
+  }
+
+  isValidController.position = "paus";
+  isValidController.callsign = "paus";
+  
+  addControllerToList(isValidController);
+
+  res.status(201).json({ update: isValidController });
+});
+
+devRoute.delete('/controller/remove', (req, res) => {
+  const { cid } = req.body;
+  if (cid) {
+    removeControllerFromCurrentList(cid);
+    res.status(200).json({msg: "Controller removed"});
+  } else {
+    res.status(400).json({ error: "include cid in body"});
+  }
+});
+
+const checkControllerValid = (controllerObj: any): Controller | undefined => {
+  if (
+    typeof controllerObj.name === 'string' &&
+    typeof controllerObj.sign === 'string' &&
+    typeof controllerObj.cid === 'string' &&
+    ['S1', 'S2', 'S3', 'C1', 'C3'].includes(controllerObj.rating) &&
+    typeof controllerObj.callsign === 'string' &&
+    typeof controllerObj.frequency === 'string' &&
+    typeof controllerObj.timestamp === 'string' &&
+    (typeof controllerObj.position === 'undefined' || typeof controllerObj.position === 'string')
+  ) {
+    // Return the controller object as valid
+    return {
+      name: controllerObj.name,
+      sign: controllerObj.sign,
+      cid: controllerObj.cid,
+      rating: controllerObj.rating,
+      callsign: controllerObj.callsign,
+      frequency: controllerObj.frequency,
+      position: controllerObj.position,
+      timestamp: controllerObj.timestamp
+    };
+  }
+
+  // If validation fails, return undefined
+  return undefined;
+};
+
+
+const addControllerToList = (controllerToAdd: Controller) => {
+  if (controllerToAdd.position == "paus") {
+    availableControllers.push({ ...controllerToAdd, position: "paus", callsign: "paus", timestamp: new Date().toISOString() });
+  } else if (controllerToAdd.position == "other") {
+    awayControllers.push({ ...controllerToAdd, position: "other", callsign: "other", timestamp: new Date().toISOString() });
+  } else {
+    // position is an active position
+    activeControllers.push({ ...controllerToAdd, position: controllerToAdd.position, callsign: controllerToAdd.callsign, timestamp: new Date().toISOString() });
+  }
+};
+
+const removeControllerFromCurrentList = (cidOfController: string) => {
+  activeControllers = activeControllers.filter((ctrl) => ctrl.cid != cidOfController);
+  availableControllers = availableControllers.filter((ctrl) => ctrl.cid != cidOfController);
+  awayControllers = awayControllers.filter((ctrl) => ctrl.cid != cidOfController);
+};
+
+const retrieveControllerInformation = (cid: string) => {
+  const tempactive = activeControllers.filter((ctrl) => ctrl.cid == cid);
+  const tempavail = availableControllers.filter((ctrl) => ctrl.cid == cid);
+  const tempaway = awayControllers.filter((ctrl) => ctrl.cid == cid);
+
+  let ctrl = undefined;
+  if (tempactive.length == 1) {
+    ctrl = tempactive.pop();
+  } else if (tempavail.length == 1) {
+    ctrl = tempavail.pop();
+  } else if (tempaway.length == 1) {
+    ctrl = tempaway.pop();
+  } else {
+    return undefined;
+  }
+
+  if (!ctrl) return undefined;
+
+  const savedName = ctrl.name;
+  const savedSign = ctrl.sign;
+  const savedRating = ctrl.rating;
+  const savedFreq = ctrl.frequency;
+  return { savedName, savedSign, savedRating, savedFreq }
+}
+
 // POST route to update controllers
+/** deprecated, use /controller instead to move 1 controller */
 devRoute.post('/controllers', (req: Request, res: Response) => {
   const {
     activeControllers: newActiveControllers,
@@ -49,7 +173,6 @@ devRoute.post('/controllers', (req: Request, res: Response) => {
     && Array.isArray(newAwayControllers)
   ) {
 
-    console.log("Now im expecting a list of all..")
     // Update the controller data
     activeControllers = newActiveControllers.map((controller) => {
       // Only update thte timestamp of the movedController, otherwise we just keep it as it was.
@@ -97,7 +220,6 @@ devRoute.post('/controllers', (req: Request, res: Response) => {
         movedController.frequency = savedFreq;
       }
     }
-    console.log(fetchAlldata);
     if (fetchAlldata == false) {
       res.status(400).send("failed");
       return;
@@ -118,45 +240,5 @@ devRoute.post('/controllers', (req: Request, res: Response) => {
     res.status(400).send('Invalid data');
   }
 });
-
-const retrieveControllerInformation = (cid: string) => {
-  const tempactive = activeControllers.filter((ctrl) => ctrl.cid == cid);
-  const tempavail = availableControllers.filter((ctrl) => ctrl.cid == cid);
-  const tempaway = awayControllers.filter((ctrl) => ctrl.cid == cid);
-
-  let ctrl = undefined;
-  if (tempactive.length == 1) {
-    ctrl = tempactive.pop();
-  } else if (tempavail.length == 1) {
-    ctrl = tempavail.pop();
-  } else if (tempaway.length == 1) {
-    ctrl = tempaway.pop();
-  } else {
-    return undefined;
-  }
-
-  if (!ctrl) return undefined;
-
-  const savedName = ctrl.name;
-  const savedSign = ctrl.sign;
-  const savedRating = ctrl.rating;
-  const savedFreq = ctrl.frequency;
-  return { savedName, savedSign, savedRating, savedFreq }
-}
-
-/** Fetch saved/predefined controllers  */
-devRoute.get('/savedcontrollers', (req, res) => {
-  res.status(200).json({Controllers: predefinedControllers});
-});
-
-const removeControllerFromCurrentList = (ctrl_to_remove: any) => {
-  activeControllers = activeControllers.filter((ctrl) => ctrl.cid != ctrl_to_remove.cid);
-  availableControllers = availableControllers.filter((ctrl) => ctrl.cid != ctrl_to_remove.cid);
-  awayControllers = awayControllers.filter((ctrl) => ctrl.cid != ctrl_to_remove.cid);
-};
-
-export const getAllControllers = () => {
-  return { activeControllers, availableControllers, awayControllers };
-};
 
 export default devRoute;

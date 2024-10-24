@@ -382,7 +382,7 @@ async function fetchControllers() {
 
 async function fetchPredefinedControllers() {
   try {
-    const response = await fetch("http://localhost:3001/api/savedcontrollers")
+    const response = await fetch("http://localhost:3001/api/controller/saved")
     const data = await response.json()
 
     predefinedControllers.value = data.Controllers || []
@@ -394,16 +394,13 @@ async function fetchPredefinedControllers() {
 async function saveControllers(movedController: Controller) {
   // change the address to "/api/controllers" if dev_mode is enabled in api.
   try {
-    await fetch("http://localhost:3001/api/controllers", {
+    await fetch("http://localhost:3001/api/controller", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        activeControllers: activeControllers.value,
-        availableControllers: controllerNames.value,
-        awayControllers: awayControllers.value,
-        moved: movedController
+        controller: movedController
       })
     })
   } catch(error) {
@@ -416,12 +413,12 @@ async function saveControllers(movedController: Controller) {
 const addControllerToDB = async (newcontroller: Controller) =>  {
 
   try {
-    await fetch("http://localhost:3001/api/controllers", {
+    await fetch("http://localhost:3001/api/controller/new", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify(newcontroller)
+      body: JSON.stringify({Controller: newcontroller})
     })
   } catch(error) {
     console.error("Error saving controller data:", error)
@@ -431,7 +428,7 @@ const addControllerToDB = async (newcontroller: Controller) =>  {
 
 const deleteControllerAsActive = async (controllerToRemoveCID: string) => {
   try {
-    await fetch("http://localhost:3001/api/activity", {
+    await fetch("http://localhost:3001/api/controller/remove", {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json"
@@ -453,7 +450,6 @@ function addNewController() {
   const newCreatedController = { ...newController.value, timestamp: new Date().toISOString()}
   controllerNames.value.push(newCreatedController);
 
-  addControllerToDB(newCreatedController)
   newController.value = {
     name: "",
     sign: "",
@@ -469,15 +465,21 @@ function addNewController() {
   showNewControllerDialog.value = false
   showControllerDialog.value = false
 
-  saveControllers(controllerNames.value.slice(-1)[0])
+  addControllerToDB(controllerNames.value.slice(-1)[0])
 }
 
 function startSession() {
   if(foundController) {
     controllerNames.value.push({
       ...foundController.value!,
+      position: "paus",
+      callsign: "paus",
       timestamp: new Date().toISOString()
     })
+
+    // TODO remove !
+    foundController.value!.position = "paus";
+    foundController.value!.position = "paus";
 
     saveControllers(foundController.value!)
 
@@ -506,12 +508,12 @@ function stopSession() {
     deleteControllerAsActive(controllerToRemove.cid);
   }
 
-  if(controllerToRemove) {
-    activeControllers.value = activeControllers.value.filter(controller => controller.cid !== controllerToRemove?.cid)
-    controllerNames.value = controllerNames.value.filter(controller => controller.cid !== controllerToRemove?.cid)
-    awayControllers.value = awayControllers.value.filter(controller => controller.cid !== controllerToRemove?.cid)
+  if(controllerToRemove && controllerToRemove.cid) {
+    activeControllers.value = activeControllers.value.filter(controller => controller.cid !== controllerToRemove.cid)
+    controllerNames.value = controllerNames.value.filter(controller => controller.cid !== controllerToRemove.cid)
+    awayControllers.value = awayControllers.value.filter(controller => controller.cid !== controllerToRemove.cid)
 
-    saveControllers(controllerToRemove)
+    // saveControllers(controllerToRemove)
   }
 
   newController.value = {
@@ -638,9 +640,8 @@ function confirmPosition() {
       controller.position = selectedPosition.value
       controller.callsign = selectedCallsign.value
       controller.timestamp = new Date().toISOString()
+      saveControllers(controller)
     }
-
-    saveControllers(selectedController.value)
 
     selectedController.value = null
     backupControllers.value = false
@@ -659,13 +660,12 @@ function onAddPause() {
 
 function confirmPause() {
   if(selectedController.value) {
-    const controller = controllerNames.value.find(controller => controller.cid === selectedController.value?.cid)
+    const controller = controllerNames.value.find(controller => controller.cid === selectedController.value?.cid);
     if(controller) {
-      controller.position = ""
+      controller.position = "paus"
       controller.timestamp = new Date().toISOString()
+      saveControllers(controller)
     }
-
-    saveControllers(selectedController.value)
 
     showPauseDialog.value = false
     selectedController.value = null
@@ -682,11 +682,11 @@ function confirmAway() {
   if(selectedController.value) {
     const controller = awayControllers.value.find(controller => controller.cid === selectedController.value?.cid)
     if(controller) {
-      controller.position = freeTextPositon.value
+      controller.position = "other"
+      controller.callsign = freeTextPositon.value;
       controller.timestamp = new Date().toISOString()
+      saveControllers(controller)
     }
-
-    saveControllers(selectedController.value)
 
     backupControllers.value = false
     showAwayDialog.value = false

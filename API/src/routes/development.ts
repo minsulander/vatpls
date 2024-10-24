@@ -1,6 +1,7 @@
-import { Router, Request, Response, json } from 'express';
+import { Router, Request, Response } from 'express';
 
 // Used during development if there is no need to interact with the database.
+// This code needs refactoring, this will be unreadable in a couple of weeks.
 
 interface Controller {
   name: string;
@@ -23,6 +24,12 @@ let availableControllers: Controller[] = [
   { name: 'Controller Three', sign: 'CT', cid: '789012', rating: 'S3', callsign: 'CTR3', frequency: '125.45', position: 'Approach', timestamp: new Date().toISOString() },
 ];
 let awayControllers: Controller[] = [];
+
+let predefinedControllers = [
+  { name: 'Max Mustermann', sign: 'T1', cid: '821932', rating: 'S1', callsign: 'CTR1', frequency: '123.45', position: 'Ground', timestamp: new Date().toISOString() },
+  { name: 'Max Kuhla', sign: 'MK', cid: '1157126', rating: 'S1', callsign: '', frequency: '', position: '', timestamp: new Date().toISOString() },
+  { name: 'Test Testsson', sign: 'T2', cid: '931204', rating: 'C1', callsign: 'CTR2', frequency: '123.90', position: 'Ground', timestamp: new Date().toISOString() }
+]
 
 devRoute.get('/controllers', (req: Request, res: Response) => {
   res.json(getAllControllers());
@@ -137,12 +144,14 @@ const retrieveControllerInformation = (cid: string) => {
   return { savedName, savedSign, savedRating, savedFreq }
 }
 
+/** Fetch saved/predefined controllers  */
+devRoute.get('/savedcontrollers', (req, res) => {
+  res.status(200).json({Controllers: predefinedControllers});
+});
+
 const removeControllerFromCurrentList = (ctrl_to_remove: any) => {
-  console.log("rmving", ctrl_to_remove.cid);
-  console.log(availableControllers);
   activeControllers = activeControllers.filter((ctrl) => ctrl.cid != ctrl_to_remove.cid);
   availableControllers = availableControllers.filter((ctrl) => ctrl.cid != ctrl_to_remove.cid);
-  console.log(availableControllers);
   awayControllers = awayControllers.filter((ctrl) => ctrl.cid != ctrl_to_remove.cid);
 };
 

@@ -382,7 +382,7 @@ async function fetchControllers() {
 
 async function fetchPredefinedControllers() {
   try {
-    const response = await fetch("http://localhost:3001/api/controllers")
+    const response = await fetch("http://localhost:3001/api/savedcontrollers")
     const data = await response.json()
 
     predefinedControllers.value = data.Controllers || []

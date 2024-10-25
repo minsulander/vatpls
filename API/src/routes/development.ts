@@ -120,7 +120,7 @@ const addControllerToList = (controllerToAdd: Controller) => {
   if (controllerToAdd.position == "paus") {
     availableControllers.push({ ...controllerToAdd, position: "paus", callsign: "paus", timestamp: new Date().toISOString() });
   } else if (controllerToAdd.position == "other") {
-    awayControllers.push({ ...controllerToAdd, position: "other", callsign: "other", timestamp: new Date().toISOString() });
+    awayControllers.push({ ...controllerToAdd, position: controllerToAdd.callsign, callsign: controllerToAdd.callsign, timestamp: new Date().toISOString() });
   } else {
     // position is an active position
     activeControllers.push({ ...controllerToAdd, position: controllerToAdd.position, callsign: controllerToAdd.callsign, timestamp: new Date().toISOString() });

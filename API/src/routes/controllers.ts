@@ -9,22 +9,30 @@ import {
 
 const controllersRoute = Router();
 
-// Returns all of the available controllers.
+// Returns all of the active controllers controllers.
 controllersRoute.get("/controllers", (req, res) => {
     getAllControllers(req, res);
 });
 
-controllersRoute.post("/controllers", (req, res) => {
+/** Returns list of all predefinned controllers */
+controllersRoute.post("/controller/saved", (req, res) => {
     addController(req, res);
 });
 
-controllersRoute.put("/controller/:id", (req, res) => {
-    editController(req, res);
+
+controllersRoute.post('/controller', (req, res) => {
+
+    return;
 });
 
-// Get a specific controller by CID.
-controllersRoute.get("/controller/:id", (req, res) => {
-    getOneController(req, res);
+controllersRoute.post('/controller/new', (req, res) => {
+
+    return;
+});
+
+controllersRoute.delete('/controller/remove', (req, res) => {
+
+    return;
 });
 
 

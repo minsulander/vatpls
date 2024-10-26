@@ -1,6 +1,7 @@
 {
   "scripts": {
-    "start": "tsc && node build/server.js"
+    "start": "tsc && node build/server.js",
+    "test": "jest"
   },
   "dependencies": {
     "@types/body-parser": "^1.19.5",
@@ -9,14 +10,17 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.0",
-    "pg": "^8.13.0"
+    "pg": "^8.13.1"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
+    "@types/jest": "^29.5.14",
     "@types/node": "20.14.0",
     "@types/pg": "^8.11.10",
+    "jest": "^29.7.0",
     "nodemon": "^3.1.7",
+    "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
-    "typescript": "^5.6.2"
+    "typescript": "^5.6.3"
   }
 }

@@ -26,8 +26,8 @@ if (DEV_MODE) {
     app.use("/api", devRoute)
 } else {
     app.use("/api", controllersRoute);
-    app.use("/api", activityRoute);
-    app.use("/api", sessionsRoute);
+    //app.use("/api", activityRoute);
+    //app.use("/api", sessionsRoute);
 }
 
 /** Synchronizing controller cards */

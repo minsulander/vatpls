@@ -24,7 +24,6 @@ let availableControllers: Controller[] = [
   { name: 'Controller Three', sign: 'CT', cid: '789012', rating: 'S3', callsign: 'CTR3', frequency: '125.45', position: 'Approach', timestamp: new Date().toISOString() },
 ];
 let awayControllers: Controller[] = [];
-
 let predefinedControllers = [
   { name: 'Max Mustermann', sign: 'T1', cid: '821932', rating: 'S1', callsign: 'CTR1', frequency: '123.45', position: 'Ground', timestamp: new Date().toISOString() },
   { name: 'Max Kuhla', sign: 'MK', cid: '1157126', rating: 'S1', callsign: '', frequency: '', position: '', timestamp: new Date().toISOString() },
@@ -35,6 +34,7 @@ export const getAllControllers = () => {
   return { activeControllers, availableControllers, awayControllers };
 };
 
+/** Returns a list of all controllers */
 devRoute.get('/controllers', (req: Request, res: Response) => {
   res.json(getAllControllers());
 });
@@ -44,22 +44,52 @@ devRoute.get('/controller/saved', (req, res) => {
   res.status(200).json({Controllers: predefinedControllers});
 });
 
+/** Move an active controller card to another state */
 devRoute.post('/controller', (req, res) => {
   const { controller } = req.body;
   const isValidController = checkControllerValid(controller);
 
-  if (!isValidController) { 
+  if (isValidController) {
+    removeControllerFromCurrentList(isValidController.cid);
+    addControllerToList(isValidController);
+    res.status(200).json({ update: isValidController});
+    return; 
+  }
+  
+  if (!controller.cid) {
     res.status(400).json({ error: "Please enter valid controller." });
     return;
   }
   
-  // remove controller from the current state.
-  removeControllerFromCurrentList(isValidController.cid);
-  addControllerToList(controller);
 
-  res.status(201).json({ update: isValidController });
+  // Find the controller that is active
+  const ctrl = retrieveControllerInformation(controller.cid);
+  
+  if (!ctrl) {
+    res.status(400).json({ error: "Could not find the active controller with given CID."});
+    return;
+  }
+
+  const ctrlInStore = {
+    name: ctrl.savedName,
+    cid: controller.cid,
+    sign: ctrl.savedSign,
+    rating: ctrl.savedRating,
+    frequency: ctrl.savedFreq,
+    position: controller.position,
+    callsign: controller.callsign,
+    timestamp: new Date().toISOString()
+  } as Controller;
+  
+
+  // remove controller from the current state.
+  removeControllerFromCurrentList(ctrlInStore.cid);
+  addControllerToList(ctrlInStore);
+
+  res.status(201).json({ update: ctrlInStore });
 });
 
+/** Add new controller as active controlelr. */
 devRoute.post('/controller/new', (req, res) => {
   const { Controller } = req.body;
   const isValidController = checkControllerValid(Controller);
@@ -71,12 +101,15 @@ devRoute.post('/controller/new', (req, res) => {
 
   isValidController.position = "paus";
   isValidController.callsign = "paus";
+
+  // TODO add controller to predefined list.
   
   addControllerToList(isValidController);
 
   res.status(201).json({ update: isValidController });
 });
 
+/** Remove controller as active  */
 devRoute.delete('/controller/remove', (req, res) => {
   const { cid } = req.body;
   if (cid) {
@@ -86,6 +119,23 @@ devRoute.delete('/controller/remove', (req, res) => {
     res.status(400).json({ error: "include cid in body"});
   }
 });
+
+const isValidMoveController = (controllerObj: any): {cid: string, position: string, callsign: string } | undefined => {
+  if (
+    typeof controllerObj.cid === 'string' &&
+    typeof controllerObj.position === 'string' &&
+    typeof controllerObj.callsign === 'string'
+  ) {
+    return {
+      cid: controllerObj.cid,
+      position: controllerObj.position,
+      callsign: controllerObj.callsign,
+    }
+  }
+
+  return undefined
+
+};
 
 const checkControllerValid = (controllerObj: any): Controller | undefined => {
   if (

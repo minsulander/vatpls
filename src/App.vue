@@ -3,17 +3,17 @@
     <!-- Button to Add or Remove Controller -->
     <div class="d-flex flex-row ga-3 mb-3 justify-end">      
       <v-btn @click="showControllerDialog = true" color="primary" variant="tonal">
-        Gå på
+        Start shift
       </v-btn>
       <v-btn @click="showDeleteControllerDialog = true" color="error" variant="tonal">
-        Gå av
+        End shift
       </v-btn>
     </div>
 
     <v-row class="d-flex flex-grow-1">
       <!-- Left Column: Position (Active Controllers) -->
       <v-col class="d-flex flex-column">
-        <h3>Position</h3>
+        <h2>Active</h2>
         <VueDraggable
           class="d-flex flex-column gap-2 pa-4 flex-grow-1 bg-grey darken-3 overflow-auto"
           v-model="activeControllers"
@@ -35,12 +35,7 @@
             <v-card-text class="pa-1">
               <v-row no-gutters class="border-row">
                 <v-col cols="6" class="border-cell no-border-left no-border-top">
-                  <v-tooltip location="top" text="{{ controller.name }}">
-                    <template v-slot:activator="{ props }">
-                      <div v-bind="props">{{ controller.name }} ({{ controller.cid }})</div>
-                    </template>
-                    <span>{{ controller.sign }}</span>
-                  </v-tooltip>
+                  {{ controller.name }} ({{ controller.cid }})
                 </v-col>
                 <v-col cols="4" class="border-cell no-border-top">
                   {{ controller.position }}
@@ -67,7 +62,7 @@
 
       <!-- Middle Column: Paus (Available Controllers) -->
       <v-col class="d-flex flex-column">
-        <h3>Paus</h3>
+        <h2>Break</h2>
         <VueDraggable
           class="d-flex flex-column gap-2 pa-4 flex-grow-1 bg-grey darken-3 overflow-auto"
           v-model="controllerNames"
@@ -89,12 +84,7 @@
             <v-card-text class="pa-1">
               <v-row no-gutters class="border-row">
                 <v-col cols="6" class="border-cell no-border-left no-border-top">
-                  <v-tooltip location="top" text="{{ controller.name }}">
-                    <template v-slot:activator="{ props }">
-                      <div v-bind="props">{{ controller.name }} ({{ controller.cid }})</div>
-                    </template>
-                    <span>{{ controller.sign }}</span>
-                  </v-tooltip>
+                  {{ controller.name }} ({{ controller.cid }})
                 </v-col>
                 <v-col cols="4" class="border-cell no-border-top">
                   Paus
@@ -117,7 +107,7 @@
 
       <!-- Right Column: Övrig tid (Away Controllers) -->
       <v-col class="d-flex flex-column">
-        <h3>Övrig tid</h3>
+        <h2>Other</h2>
         <VueDraggable
           class="d-flex flex-column gap-2 pa-4 flex-grow-1 bg-grey darken-3 overflow-auto"
           v-model="awayControllers"
@@ -139,12 +129,7 @@
             <v-card-text class="pa-1">
               <v-row no-gutters class="border-row">
                 <v-col cols="6" class="border-cell no-border-left no-border-top">
-                  <v-tooltip location="top" text="{{ controller.name }}">
-                    <template v-slot:activator="{ props }">
-                      <div v-bind="props">{{ controller.name }} ({{ controller.cid }})</div>
-                    </template>
-                    <span>{{ controller.sign }}</span>
-                  </v-tooltip>
+                  {{ controller.name }} ({{ controller.cid }})
                 </v-col>
                 <v-col cols="4" class="border-cell no-border-top">
                   {{ controller.position || " " }}
@@ -168,15 +153,15 @@
 
     <v-dialog v-model="showControllerDialog" max-width="500">
       <v-card>
-        <v-card-title>Gå på pass</v-card-title>
+        <v-card-title>Start shift</v-card-title>
         <v-card-text>
           <v-form ref="controllerForm">
             <v-text-field v-model="newController.cid" label="CID" autofocus></v-text-field>
-            <p v-if="controllerMatch()" class="ml-4">{{ isActiveController(newController) ? "Kontroller är redan aktiv." : foundController?.name + " hittad" }}</p>
-            <p v-else-if="newController.cid.length > 0" class="ml-4">Inkorrekt CID</p>
+            <p v-if="controllerMatch()" class="ml-4">{{ isActiveController(newController) ? "Controller is already active" : foundController?.name + " found" }}</p>
+            <p v-else-if="newController.cid.length > 0" class="ml-4">Incorrect CID</p>
             <v-card-actions>
-              <v-btn v-if="controllerMatch() && !isActiveController(newController)" color="primary" @click="startSession">Gå på</v-btn>
-              <v-btn v-if="!controllerMatch() && !isActiveController(newController)" color="primary" @click="showNewControllerDialog = true">Ny flygledare</v-btn>
+              <v-btn v-if="controllerMatch() && !isActiveController(newController)" color="primary" @click="startSession">Start shift</v-btn>
+              <v-btn v-if="!controllerMatch() && !isActiveController(newController)" color="primary" @click="showNewControllerDialog = true">New controller</v-btn>
               <v-btn text @click="showControllerDialog = false, newController.cid = ''">Cancel</v-btn>
             </v-card-actions>
           </v-form>
@@ -187,18 +172,46 @@
     <!-- Dialog for Adding a New Controller -->
     <v-dialog v-model="showNewControllerDialog" max-width="500">
       <v-card>
-        <v-card-title>Lägg till ny flygledare</v-card-title>
+        <v-card-title>New controller</v-card-title>
         <v-card-text>
           <v-form ref="newControllerForm">
-            <v-text-field v-model="newController.name" label="Full Name" autofocus></v-text-field>
-            <v-text-field v-model="newController.sign" label="Sign (2 letters)"></v-text-field>
-            <v-text-field v-model="newController.cid" label="CID"></v-text-field>
-            <v-select v-model="newController.rating" :items="ratings" label="Rating"></v-select>
-            <v-select v-model="newController.endorsment" :items="endorsments" label="Endorsment"></v-select>
+            <v-text-field 
+              v-model="newController.name" 
+              label="Full Name" 
+              autofocus
+              :rules="[v => v.length >= 3 || 'Name must be at least 3 characters long']"
+            ></v-text-field>
+            <v-text-field 
+              v-model="newController.sign" 
+              label="Signature (2 letters)"
+              :rules="[v => /^[a-zA-Z]{2}$/.test(v) || 'Sign must be 2 letters']"
+              maxlength="2"
+            ></v-text-field>
+            <v-text-field 
+              v-model="newController.cid" 
+              label="CID"
+              :rules="[v => /^\d{5,8}$/.test(v) || 'CID must be 5-8 digits']"
+            ></v-text-field>
+            <v-select 
+              v-model="newController.rating" 
+              :items="ratings" 
+              label="Rating"
+              :rules="[v => !!v || 'Rating is required']"
+            ></v-select>
+            <v-select 
+              v-model="newController.endorsment" 
+              :items="endorsments" 
+              label="Endorsment"
+              :rules="[v => !!v || 'Endorsment is required']"
+            ></v-select>
           </v-form>
         </v-card-text>
         <v-card-actions>
-          <v-btn color="primary" @click="addNewController">Add</v-btn>
+          <v-btn 
+            color="primary" 
+            @click="addNewController" 
+            :disabled="!isNewControllerFormValid"
+          >Add</v-btn>
           <v-btn text @click="showNewControllerDialog = false, showControllerDialog = false, newController.cid = ''">Cancel</v-btn>
         </v-card-actions>
       </v-card>
@@ -207,14 +220,14 @@
     <!-- Dialog for Removing an Existing Controller -->
     <v-dialog v-model="showDeleteControllerDialog" max-width="500">
       <v-card>
-        <v-card-title>Gå av pass</v-card-title>
+        <v-card-title>End shift</v-card-title>
         <v-card-text>
           <v-form ref="removeControllerForm">
             <v-text-field v-model="newController.cid" label="CID" autofocus></v-text-field>
-            <p v-if="controllerMatchLogoff()" class="ml-4">{{ foundController?.name }} hittad</p>
-            <p v-else-if="newController.cid.length > 0" class="ml-4">Inkorrekt CID</p>
+            <p v-if="controllerMatchLogoff()" class="ml-4">{{ foundController?.name }} found</p>
+            <p v-else-if="newController.cid.length > 0" class="ml-4">Incorrect CID</p>
             <v-card-actions>
-              <v-btn v-if="controllerMatchLogoff()" color="error" @click="stopSession">Gå av</v-btn>
+              <v-btn v-if="controllerMatchLogoff()" color="error" @click="stopSession">End shift</v-btn>
               <v-btn text @click="showDeleteControllerDialog = false, newController.cid = ''">Cancel</v-btn>
             </v-card-actions>
           </v-form>
@@ -225,9 +238,9 @@
     <!-- Dialog for Pause -->
     <v-dialog v-model="showPauseDialog" max-width="400">
       <v-card>
-        <v-card-title>Gå på paus?</v-card-title>
+        <v-card-title>Go on break</v-card-title>
         <v-card-actions>
-          <v-btn color="primary" @click="confirmPause">Yes</v-btn>
+          <v-btn color="primary" @click="confirmPause">Confirm</v-btn>
           <v-btn text @click="cancelAction">Cancel</v-btn>
         </v-card-actions>
       </v-card>
@@ -235,16 +248,44 @@
 
     <!-- Dialog for selection of Position and Callsign -->
     <v-dialog v-model="showPositionDialog" max-width="500">
-      <v-card>
-        <v-card-title>Set Position and Callsign</v-card-title>
-        <v-card-text>
-          <v-form ref="positionForm">
-            <v-select v-model="selectedPosition" :items="positions" label="Position"></v-select>
-            <v-text-field v-model="selectedCallsign" label="Callsign"></v-text-field>
+      <v-card class="position-dialog-card">
+        <v-card-title>Go on position</v-card-title>
+        <v-card-text class="position-dialog-content">
+          <v-form ref="positionForm" class="position-form">
+            <v-text-field
+              v-model="selectedPosition"
+              label="Position"
+              @input="updatePositionSelection"
+              clearable
+              @click:clear="clearPosition"
+            ></v-text-field>
+
+            <v-list class="position-list" ref="positionList">
+              <template v-for="(group, index) in positionGroups" :key="index">
+                <v-list-subheader>{{ group.name }}</v-list-subheader>
+                <v-list-item
+                  v-for="position in group.positions"
+                  :key="position"
+                  :title="position"
+                  @click="selectedPosition = position"
+                  :active="selectedPosition.toLowerCase() === position.toLowerCase()"
+                  :ref="el => { if (position.toLowerCase() === selectedPosition.toLowerCase()) matchingItemRef = el }"
+                ></v-list-item>
+                <v-divider v-if="index < positionGroups.length - 1"></v-divider>
+              </template>
+            </v-list>
+
+            <v-text-field v-model="selectedCallsign" label="Callsign (if not implied by position)" class="mt-4"></v-text-field>
           </v-form>
         </v-card-text>
         <v-card-actions>
-          <v-btn color="primary" @click="confirmPosition">Save</v-btn>
+          <v-btn 
+            color="primary" 
+            @click="confirmPosition" 
+            :disabled="!isValidPosition"
+          >
+            Confirm
+          </v-btn>
           <v-btn text @click="cancelAction">Cancel</v-btn>
         </v-card-actions>
       </v-card>
@@ -253,12 +294,12 @@
     <!-- Dialog for Away Position -->
     <v-dialog v-model="showAwayDialog" max-width="500">
       <v-card>
-          <v-card-title>Ange notis</v-card-title>
+          <v-card-title>Go on other (not break/position)</v-card-title>
           <v-card-text>
-            <v-text-field v-model="freeTextPositon" label="Notis"></v-text-field>
+            <v-text-field v-model="freeTextPositon" label="Note"></v-text-field>
           </v-card-text>
           <v-card-actions>
-            <v-btn color="primary" @click="confirmAway">Save</v-btn>
+            <v-btn color="primary" @click="confirmAway">Confirm</v-btn>
             <v-btn @click="cancelAction">Cancel</v-btn>
           </v-card-actions>
       </v-card>
@@ -267,7 +308,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, Ref } from "vue"
+import { ref, onMounted, onUnmounted, computed, nextTick, watch } from "vue"
 import { VueDraggable } from "vue-draggable-plus"
 import moment from "moment"
 
@@ -285,7 +326,30 @@ interface Controller {
 
 const ratings = [ "S1", "S2", "S3", "C1" ]
 const endorsments = [ "NIL", "T2 APS", "T1 TWR", "T1 APP" ]
-const positions = [ "GG AD1", "GG AD2", "GG AD3", "SA AD1", "SA AD2", "SA AD3", "SA AD4", "ACC1", "ACC2", "ACC3", "ACC4", "ACC5", "ACC6", "WS", "Ö1", "Ö2" ]
+const positions = [ "Online", "GG APP", "GG TWR", "GG GND", "GG DEL", "SA TWR", "SA GND", "SA DEL", "SA AD+", "ACC1", "ACC2", "ACC3", "ACC4", "ACC5", "ACC6", "APP1", "APP2", "APP3", "WS", "Ö1", "Ö2" ]
+
+const positionGroups = ref([
+  {
+    name: "ACC",
+    positions: positions.filter(p => p.startsWith("ACC"))
+  },
+  {
+    name: "APP",
+    positions: positions.filter(p => p.startsWith("APP"))
+  },
+  {
+    name: "GG",
+    positions: positions.filter(p => p.startsWith("GG"))
+  },
+  {
+    name: "SA",
+    positions: positions.filter(p => p.startsWith("SA"))
+  },
+  {
+    name: "Other",
+    positions: ["Online", "Ö1", "Ö2", "WS"]
+  }
+]);
 
 const showControllerDialog = ref(false)
 const showNewControllerDialog = ref(false)
@@ -294,7 +358,10 @@ const showPositionDialog = ref(false)
 const showPauseDialog = ref(false)
 const showAwayDialog = ref(false)
 
+
 const selectedPosition = ref("")
+const isValidPosition = computed(() => positions.includes(selectedPosition.value))
+
 const selectedCallsign = ref("")
 const freeTextPositon = ref("")
 
@@ -332,6 +399,28 @@ const newController = ref({
   timestamp: new Date().toISOString()
 })
 
+const positionList = ref(null)
+let matchingItemRef = null
+
+const allPositions = computed(() => 
+  positionGroups.value.flatMap(group => group.positions)
+)
+
+const positionDialog = ref(false)
+
+const newControllerForm = ref(null)
+
+const isNewControllerFormValid = computed(() => {
+  if (!newControllerForm.value) return false
+  return (
+    newController.value.name.length >= 3 &&
+    /^[a-zA-Z]{2}$/.test(newController.value.sign) &&
+    /^\d{5,8}$/.test(newController.value.cid) &&
+    !!newController.value.rating &&
+    !!newController.value.endorsment
+  )
+})
+
 function controllerMatch() {
   const controllersSearch = predefinedControllers.value.filter(controller => controller.cid === newController.value.cid)
   const allControllersSearch = getAllControllers.value.filter(controller => controller.cid === newController.value.cid)
@@ -365,7 +454,6 @@ function isActiveController(ctrl: Controller) {
  */
 
 async function fetchControllers() {
-  // change the address to "/api/controllers" if dev_mode is enabled in api.
   try {
     const response = await fetch("http://localhost:3001/api/controllers")
     const data = await response.json()
@@ -392,7 +480,6 @@ async function fetchPredefinedControllers() {
 }
 
 async function saveControllers(movedController: Controller) {
-  // change the address to "/api/controllers" if dev_mode is enabled in api.
   try {
     await fetch("http://localhost:3001/api/controller", {
       method: "POST",
@@ -447,25 +534,31 @@ const deleteControllerAsActive = async (controllerToRemoveCID: string) => {
  */
 
 function addNewController() {
-  const newCreatedController = { ...newController.value, timestamp: new Date().toISOString()}
-  controllerNames.value.push(newCreatedController);
+  if (isNewControllerFormValid.value) {
+    const newCreatedController = { 
+      ...newController.value, 
+      sign: newController.value.sign.toUpperCase(),
+      timestamp: new Date().toISOString() 
+    }
+    controllerNames.value.push(newCreatedController)
 
-  newController.value = {
-    name: "",
-    sign: "",
-    cid: "",
-    callsign: "",
-    position: "",
-    frequency: "",
-    rating: "",
-    endorsment: "",
-    timestamp: new Date().toISOString()
+    newController.value = {
+      name: "",
+      sign: "",
+      cid: "",
+      callsign: "",
+      position: "",
+      frequency: "",
+      rating: "",
+      endorsment: "",
+      timestamp: new Date().toISOString()
+    }
+
+    showNewControllerDialog.value = false
+    showControllerDialog.value = false
+
+    addControllerToDB(controllerNames.value.slice(-1)[0])
   }
-
-  showNewControllerDialog.value = false
-  showControllerDialog.value = false
-
-  addControllerToDB(controllerNames.value.slice(-1)[0])
 }
 
 function startSession() {
@@ -783,13 +876,13 @@ function getBorderColor(ctrl: Controller) {
 
   switch(ctrl.rating) {
     case "S1":
-      ratingColor = "red"
+      ratingColor = "green"
       break
     case "S2":
       ratingColor = "blue"
       break
     case "S3":
-      ratingColor = "green"
+      ratingColor = "red"
       break
     case "C1":
       ratingColor = "yellow"
@@ -804,6 +897,53 @@ function getBorderColor(ctrl: Controller) {
 function getBorderTextColor(ctrl: Controller) {
   if(ctrl.rating === "C1") return { color: "#000" };
   return { color: "#FFF" };
+}
+
+function updatePositionSelection() {
+  const inputLower = selectedPosition.value.toLowerCase()
+  const matchingPosition = allPositions.value.find(
+    pos => pos.toLowerCase() === inputLower
+  )
+
+  if (matchingPosition) {
+    selectedPosition.value = matchingPosition
+  }
+
+  nextTick(() => {
+    if (matchingItemRef && positionList.value) {
+      const listElement = positionList.value.$el
+      const itemElement = matchingItemRef.$el
+
+      if (itemElement) {
+        listElement.scrollTop = itemElement.offsetTop - listElement.offsetTop
+      }
+    }
+  })
+}
+
+function clearPosition() {
+  selectedPosition.value = ""
+  matchingItemRef = null
+  // Optionally, you can scroll the list back to the top
+  if (positionList.value) {
+    positionList.value.$el.scrollTop = 0
+  }
+}
+
+// Watch for changes in positionDialog
+watch(positionDialog, (newValue) => {
+  if (!newValue) {
+    // Dialog is being closed
+    clearPositionDialog()
+  }
+})
+
+function clearPositionDialog() {
+  selectedPosition.value = ""
+  matchingItemRef = null
+  if (positionList.value) {
+    positionList.value.$el.scrollTop = 0
+  }
 }
 </script>
 
@@ -864,4 +1004,34 @@ function getBorderTextColor(ctrl: Controller) {
   .v-card-text {
     padding: 0 !important;
   }
+
+  .position-dialog-card {
+  display: flex;
+  flex-direction: column;
+  height: 90vh;
+}
+
+.position-dialog-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.position-form {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.position-list {
+  flex-grow: 1;
+  overflow-y: auto;
+  margin: 10px 0;
+}
+
+.v-card-actions {
+  padding-top: 16px;
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+}
 </style>

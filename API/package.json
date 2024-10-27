@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "start": "tsc && node build/server.js",
+    "start": "tsc && node build/src/server.js",
     "test": "jest"
   },
   "dependencies": {

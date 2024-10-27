@@ -8,7 +8,7 @@ import devRoute from "./routes/development";
 
 import { getAllControllers } from "./routes/development";
 
-const DEV_MODE = true; // set to true if use system without database, otherwise set false.
+const DEV_MODE = false; // set to true if use system without database, otherwise set false.
 
 const app = express();
 const port = 3001;
@@ -25,6 +25,7 @@ app.use((req, res, next) => {
 if (DEV_MODE) {
     app.use("/api", devRoute)
 } else {
+    console.log("database in use");
     app.use("/api", controllersRoute);
     //app.use("/api", activityRoute);
     //app.use("/api", sessionsRoute);

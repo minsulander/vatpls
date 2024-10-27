@@ -1,9 +1,11 @@
 import { Router } from "express";
 import { 
-    getAllControllers,
     addController,
     editController,
-    getOneController
+    getOneController,
+    getAllControllersHandler,
+    getPredefinedControllersHandler,
+    postController
 } from "../controllers/controller";
 
 
@@ -11,18 +13,17 @@ const controllersRoute = Router();
 
 // Returns all of the active controllers controllers.
 controllersRoute.get("/controllers", (req, res) => {
-    getAllControllers(req, res);
+    getAllControllersHandler(req, res);
 });
 
 /** Returns list of all predefinned controllers */
-controllersRoute.post("/controller/saved", (req, res) => {
-    addController(req, res);
+controllersRoute.get("/controller/saved", (req, res) => {
+    getPredefinedControllersHandler(req, res);
 });
 
 
 controllersRoute.post('/controller', (req, res) => {
-
-    return;
+    postController(req, res);
 });
 
 controllersRoute.post('/controller/new', (req, res) => {

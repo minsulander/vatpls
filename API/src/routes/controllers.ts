@@ -1,11 +1,10 @@
 import { Router } from "express";
 import { 
-    addController,
-    editController,
-    getOneController,
     getAllControllersHandler,
     getPredefinedControllersHandler,
-    postController
+    postController,
+    addNewController,
+    removeControllerAsActive
 } from "../controllers/controller";
 
 
@@ -21,19 +20,19 @@ controllersRoute.get("/controller/saved", (req, res) => {
     getPredefinedControllersHandler(req, res);
 });
 
-
+/** Move controller to a state */
 controllersRoute.post('/controller', (req, res) => {
     postController(req, res);
 });
 
+/** Add a new controller, also adds to pause state */
 controllersRoute.post('/controller/new', (req, res) => {
-
-    return;
+    addNewController(req, res);
 });
 
+// Remove controller as active controller. But not the controller.
 controllersRoute.delete('/controller/remove', (req, res) => {
-
-    return;
+    removeControllerAsActive(req, res);
 });
 
 

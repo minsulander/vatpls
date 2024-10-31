@@ -4,4 +4,7 @@ module.exports = {
   transform: {
     "^.+.tsx?$": ["ts-jest",{}],
   },
+  testPathIgnorePatterns: [
+    "/build/"         // Exclude build directory
+  ],
 };

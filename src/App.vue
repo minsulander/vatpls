@@ -386,6 +386,7 @@ async function fetchPredefinedControllers() {
     const data = await response.json()
 
     predefinedControllers.value = data.Controllers || []
+    console.log(data);
   } catch(error) {
     console.error("Error fetching predefined controller data:", error)
   }
@@ -472,14 +473,13 @@ function startSession() {
   if(foundController) {
     controllerNames.value.push({
       ...foundController.value!,
-      position: "paus",
-      callsign: "paus",
+      position: "pause",
+      callsign: "pause",
       timestamp: new Date().toISOString()
     })
 
-    // TODO remove !
-    foundController.value!.position = "paus";
-    foundController.value!.position = "paus";
+    foundController.value!.position = "pause";
+    foundController.value!.callsign = "pause";
 
     saveControllers(foundController.value!)
 
@@ -537,12 +537,16 @@ function stopSession() {
 function formatTimeDifference(timestamp: string) {
   if (!timestamp) return "--:--:--"
 
-  const now = moment()
-  const timeDifference = moment.duration(now.diff(moment(timestamp)))
+  const currentTime = new Date().getTime();
+  const startTime = new Date(timestamp).getTime() - new Date().getTimezoneOffset() * 60000; // Local time is automatically used here
 
-  const hours = String(Math.floor(timeDifference.asHours())).padStart(2, "0")
-  const minutes = String(Math.floor(timeDifference.minutes())).padStart(2, "0")
-  const seconds = String(Math.floor(timeDifference.seconds())).padStart(2, "0")
+  const diffInSeconds = Math.floor((currentTime - startTime) / 1000);
+
+  if (diffInSeconds < 1) { return "--:--:--";}
+  const hours = String(Math.floor(diffInSeconds / 3600)).padStart(2, "0");
+  const minutes = String(Math.floor((diffInSeconds % 3600) / 60)).padStart(2, "0");
+  const seconds = String(diffInSeconds % 60).padStart(2, "0");
+
 
   return `${hours}:${minutes}:${seconds}`
 }
@@ -662,7 +666,7 @@ function confirmPause() {
   if(selectedController.value) {
     const controller = controllerNames.value.find(controller => controller.cid === selectedController.value?.cid);
     if(controller) {
-      controller.position = "paus"
+      controller.position = "pause"
       controller.timestamp = new Date().toISOString()
       saveControllers(controller)
     }

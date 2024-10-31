@@ -2,7 +2,7 @@ export interface Controller {
   name: string;
   sign: string;
   cid: string;
-  rating: "S1" | "S2" | "S3" | "C1" | "C3";
+  rating: Rating;
   callsign: string;
   frequency: string;
   position?: string;
@@ -11,9 +11,18 @@ export interface Controller {
 
 /** DB types */
 
-type State = "PAUSE" | "ACTIVE" | "OTHER";
+export type State = "PAUSE" | "ACTIVE" | "OTHER";
 
+// in
 export interface IActivity {
+  cid: string;
+  callsign?: string;
+  position?: string;
+  in_list: State
+};
+
+// out
+export interface OActivity {
   cid: string;
   callsign: string;
   position: string;
@@ -21,7 +30,7 @@ export interface IActivity {
   in_list: State
 };
 
-type Rating = "OBS" | "S1" | "S2" | "S3" | "C1" | "C3" | "I1";
+export type Rating = "OBS" | "S1" | "S2" | "S3" | "C1" | "C3" | "I1";
 
 export interface SkeletonController {
   cid: string;
@@ -30,10 +39,20 @@ export interface SkeletonController {
   rating: Rating;
 };
 
-export interface Endorsement {
+export type Endorsement = 'NIL' | 'T1 APP' | 'T2 APS' | 'T1 TWR';
 
+export interface NewController extends SkeletonController {
+  endorsement: Endorsement[];
 };
 
 export interface ActiveController extends SkeletonController {
   in_list: State;
 };
+
+export interface OActive extends SkeletonController {
+  callsign: string;
+  position: string;
+  endorsment?: string;
+  timestamp: string;
+  in_list: State;
+}

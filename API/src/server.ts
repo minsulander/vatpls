@@ -7,8 +7,10 @@ import sessionsRoute from "./routes/sessions";
 import devRoute from "./routes/development";
 
 import { getAllControllers } from "./routes/development";
+import { activeControllersService } from "./services/controllerServices";
+import { sortControllers } from "./controllers/controller";
 
-const DEV_MODE = true; // set to true if use system without database, otherwise set false.
+const DEV_MODE = false; // set to true if use system without database, otherwise set false.
 
 const app = express();
 const port = 3001;
@@ -25,9 +27,10 @@ app.use((req, res, next) => {
 if (DEV_MODE) {
     app.use("/api", devRoute)
 } else {
+    console.log("database in use");
     app.use("/api", controllersRoute);
-    app.use("/api", activityRoute);
-    app.use("/api", sessionsRoute);
+    //app.use("/api", activityRoute);
+    //app.use("/api", sessionsRoute);
 }
 
 /** Synchronizing controller cards */
@@ -50,11 +53,11 @@ app.get('/subscribe', async (req, res) => {
 
     let idx = 0;
     while (true) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 5000));
         
-        const ctrlData = getAllControllers();
+        const ctrlData = sortControllers(await activeControllersService());
 
-
+        console.log(ctrlData);
         res.write(`data: ${JSON.stringify(ctrlData)}\n\n`);
 
 

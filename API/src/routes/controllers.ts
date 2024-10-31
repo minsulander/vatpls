@@ -1,30 +1,38 @@
 import { Router } from "express";
 import { 
-    getAllControllers,
-    addController,
-    editController,
-    getOneController
+    getAllControllersHandler,
+    getPredefinedControllersHandler,
+    postController,
+    addNewController,
+    removeControllerAsActive
 } from "../controllers/controller";
 
 
 const controllersRoute = Router();
 
-// Returns all of the available controllers.
+// Returns all of the active controllers controllers.
 controllersRoute.get("/controllers", (req, res) => {
-    getAllControllers(req, res);
+    getAllControllersHandler(req, res);
 });
 
-controllersRoute.post("/controllers", (req, res) => {
-    addController(req, res);
+/** Returns list of all predefinned controllers */
+controllersRoute.get("/controller/saved", (req, res) => {
+    getPredefinedControllersHandler(req, res);
 });
 
-controllersRoute.put("/controller/:id", (req, res) => {
-    editController(req, res);
+/** Move controller to a state */
+controllersRoute.post('/controller', (req, res) => {
+    postController(req, res);
 });
 
-// Get a specific controller by CID.
-controllersRoute.get("/controller/:id", (req, res) => {
-    getOneController(req, res);
+/** Add a new controller, also adds to pause state */
+controllersRoute.post('/controller/new', (req, res) => {
+    addNewController(req, res);
+});
+
+// Remove controller as active controller. But not the controller.
+controllersRoute.delete('/controller/remove', (req, res) => {
+    removeControllerAsActive(req, res);
 });
 
 

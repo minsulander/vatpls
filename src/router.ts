@@ -52,7 +52,12 @@ const routes = [
     {
         path: '/',
         name: 'ControllerList',
-        component: () => import('@/App.vue'),
+        component: () => import('@/pls.vue'),
+    },
+    {
+        path: '/ws',
+        name: 'AdminPanel',
+        component: () => import('@/ws.vue'),
     }
 ]
 

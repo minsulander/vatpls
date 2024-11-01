@@ -31,7 +31,7 @@
           <VueDraggable
             class="d-flex flex-column gap-2 pa-4 flex-grow-1 bg-grey darken-3 overflow-auto"
             v-model="activeControllers"
-            animation="100"
+            :animation="100"
             ghostClass="ghost"
             group="tasks"
             :disabled="!authorized"
@@ -81,7 +81,7 @@
           <VueDraggable
             class="d-flex flex-column gap-2 pa-4 flex-grow-1 bg-grey darken-3 overflow-auto"
             v-model="controllerNames"
-            animation="100"
+            :animation="100"
             ghostClass="ghost"
             group="tasks"
             :disabled="!authorized"
@@ -127,7 +127,7 @@
           <VueDraggable
             class="d-flex flex-column gap-2 pa-4 flex-grow-1 bg-grey darken-3 overflow-auto"
             v-model="awayControllers"
-            animation="100"
+            :animation=100
             ghostClass="ghost"
             group="tasks"
             :disabled="!authorized"
@@ -179,7 +179,7 @@
               <v-card-actions>
                 <v-btn v-if="controllerMatch() && !isActiveController(newController)" color="primary" @click="startSession">Start shift</v-btn>
                 <v-btn v-if="!controllerMatch() && !isActiveController(newController)" color="primary" @click="showNewControllerDialog = true">New controller</v-btn>
-                <v-btn text @click="showControllerDialog = false, newController.cid = ''">Cancel</v-btn>
+                <v-btn variant="text" @click="showControllerDialog = false, newController.cid = ''">Cancel</v-btn>
               </v-card-actions>
             </v-form>
           </v-card-text>
@@ -229,7 +229,7 @@
               @click="addNewController" 
               :disabled="!isNewControllerFormValid"
             >Add</v-btn>
-            <v-btn text @click="showNewControllerDialog = false, showControllerDialog = false, newController.cid = ''">Cancel</v-btn>
+            <v-btn variant="text" @click="showNewControllerDialog = false, showControllerDialog = false, newController.cid = ''">Cancel</v-btn>
           </v-card-actions>
         </v-card>
       </v-dialog>
@@ -245,7 +245,7 @@
               <p v-else-if="newController.cid.length > 0" class="ml-4">Incorrect CID</p>
               <v-card-actions>
                 <v-btn v-if="controllerMatchLogoff()" color="error" @click="stopSession">End shift</v-btn>
-                <v-btn text @click="showDeleteControllerDialog = false, newController.cid = ''">Cancel</v-btn>
+                <v-btn variant="text" @click="showDeleteControllerDialog = false, newController.cid = ''">Cancel</v-btn>
               </v-card-actions>
             </v-form>
           </v-card-text>
@@ -258,7 +258,7 @@
           <v-card-title>Go on break</v-card-title>
           <v-card-actions>
             <v-btn color="primary" @click="confirmPause">Confirm</v-btn>
-            <v-btn text @click="cancelAction">Cancel</v-btn>
+            <v-btn variant="text" @click="cancelAction">Cancel</v-btn>
           </v-card-actions>
         </v-card>
       </v-dialog>
@@ -303,7 +303,7 @@
             >
               Confirm
             </v-btn>
-            <v-btn text @click="cancelAction">Cancel</v-btn>
+            <v-btn variant="text" @click="cancelAction">Cancel</v-btn>
           </v-card-actions>
         </v-card>
       </v-dialog>

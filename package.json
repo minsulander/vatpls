@@ -13,6 +13,7 @@
   "dependencies": {
     "@mdi/font": "7.0.96",
     "@turf/turf": "^6.5.0",
+    "apexcharts": "^4.0.0",
     "axios": "^1.6.2",
     "core-js": "^3.29.0",
     "howler": "^2.2.4",
@@ -23,6 +24,7 @@
     "vue": "^3.5.12",
     "vue-draggable-plus": "^0.5.3",
     "vue-router": "^4.0.0",
+    "vue3-apexcharts": "^1.7.0",
     "vuetify": "^3.0.0"
   },
   "devDependencies": {

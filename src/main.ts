@@ -31,10 +31,11 @@ const vuetify = createVuetify({
 
 import App from "./App.vue"
 import { createApp } from "vue"
+import VueApexCharts from "vue3-apexcharts"
 
 const app = createApp(App)
 
 app.provide("moment", moment)
-app.use(vuetify).use(router).use(pinia)
+app.use(vuetify).use(router).use(pinia).use(VueApexCharts)
 
 app.mount("#app")

@@ -11,6 +11,7 @@ import { activeControllersService } from "./services/controllerServices";
 import { sortControllers } from "./controllers/controller";
 
 import { query_database } from "./db/database";
+import authRouter from "./routes/auth";
 
 const DEV_MODE = false; // set to true if use system without database, otherwise set false.
 
@@ -27,7 +28,7 @@ app.use((req, res, next) => {
 });
 
 if (DEV_MODE) {
-    app.use("/api", devRoute)
+    app.use("/api", devRoute, authRouter);
 } else {
     console.log("database in use");
     try {
@@ -37,12 +38,15 @@ if (DEV_MODE) {
     } catch (e) {
         console.error(e);
     }
-    app.use("/api", controllersRoute);
+    app.use("/api", controllersRoute, authRouter);
     //app.use("/api", activityRoute);
     //app.use("/api", sessionsRoute);
 }
 
-/** Synchronizing controller cards */
+/** 
+ * Synchronizing controller cards
+ * TODO: only send updates when updates happen.
+ */
 app.get('/subscribe', async (req, res) => {
     res.set({
         'Cache-Control': 'no-cache',
@@ -60,24 +64,19 @@ app.get('/subscribe', async (req, res) => {
 
     res.write('retry: 10000\n\n');
 
-    let idx = 0;
     while (true) {
         await new Promise(resolve => setTimeout(resolve, 5000));
 
         const ctrlData = sortControllers(await activeControllersService());
         if (ctrlData) {
-            console.log(ctrlData);
             res.write(`data: ${JSON.stringify(ctrlData)}\n\n`);
         }
 
-
         if (connection == "closed") break;
     }
-
 });
 
 // Start the server
 app.listen(port, async () => {
     console.log(`Server is running on http://localhost:${port}`);
-
 });

@@ -15,7 +15,10 @@ PGADMIN_DEFAULT_PASSWORD=vatpls01
 PGUSER=postgres
 PGPASSWORD=password
 PGDATABASE=vatpls
+PLS_PASSWORD={enter password}
 ```
+
+PLS PASSWORD defaults to 'test'.
 
 (You can change any of these values)
 

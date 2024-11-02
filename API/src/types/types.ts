@@ -52,7 +52,7 @@ export interface ActiveController extends SkeletonController {
 export interface OActive extends SkeletonController {
   callsign: string;
   position: string;
-  endorsment?: string;
+  endorsements: string;
   timestamp: string;
   in_list: State;
 }

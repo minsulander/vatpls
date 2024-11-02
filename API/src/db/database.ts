@@ -44,16 +44,28 @@ export const cid_query = async (cid: string): Promise <QueryResult<SkeletonContr
 export const activeControllers = async (): Promise<QueryResult<OActive>> => {
     return query_database(
         `
-        SELECT
-        controller.controller_name AS name,
-        controller.sign,
-        controller.cid,
-        active.callsign,
-        controller.controller_rating AS rating,
-        active.position,
-        active.session_start AS timestamp,
-        active.in_list
-        FROM controller JOIN active ON controller.cid = active.cid;
+          SELECT
+            controller.controller_name AS name,
+            controller.sign,
+            controller.cid,
+            active.callsign,
+            controller.controller_rating AS rating,
+            active.position,
+            active.session_start AS timestamp,
+            active.in_list,
+            COALESCE(array_agg(endorsement.endorsement), '{NIL}') AS endorsements
+                FROM controller
+                JOIN active ON controller.cid = active.cid
+                LEFT JOIN Endorsements AS endorsement ON controller.cid = endorsement.cid
+            GROUP BY
+            controller.controller_name,
+            controller.sign,
+            controller.cid,
+            active.callsign,
+            controller.controller_rating,
+            active.position,
+            active.session_start,
+            active.in_list;
         `
     );
 }

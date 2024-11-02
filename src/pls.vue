@@ -19,7 +19,7 @@
         <v-btn @click="showControllerDialog = isAuthorized()" color="primary" variant="tonal">
           Start shift
         </v-btn>
-        <v-btn @click="showControllerDialog = isAuthorized()" color="error" variant="tonal">
+        <v-btn @click="showDeleteControllerDialog = isAuthorized()" color="error" variant="tonal">
           End shift
         </v-btn>
       </div>
@@ -64,7 +64,7 @@
 
                 <v-row no-gutters class="border-row">
                   <v-col cols="6" class="border-cell no-border-left no-border-bottom">
-                    {{ controller.endorsment === "NIL" ? " " : controller.endorsment }}
+                    {{ controller.endorsment === "NIL" ? " " : parseEndorsment(controller.endorsment) }}
                   </v-col>
                   <v-col cols="6" class="border-cell no-border-right no-border-bottom">
                     {{ controller.callsign.length > 0 ? controller.callsign : "&nbsp;" }}
@@ -112,7 +112,7 @@
 
                 <v-row no-gutters class="border-row">
                   <v-col cols="6" class="border-cell no-border-left no-border-bottom">
-                    {{ controller.endorsment === "NIL" ? " " : controller.endorsment }}
+                    {{ controller.endorsment === "NIL" ? " " : parseEndorsment(controller.endorsment) }}
                   </v-col>
                   <v-col cols="6" class="border-cell no-border-right no-border-bottom">&nbsp;</v-col>
                 </v-row>
@@ -149,7 +149,7 @@
                     {{ controller.name }} ({{ controller.cid }})
                   </v-col>
                   <v-col cols="4" class="border-cell no-border-top">
-                    {{ controller.position || " " }}
+                    {{ "&nbsp;" }}
                   </v-col>
                   <v-col cols="2" class="border-cell no-border-right no-border-top">
                     {{ formatTimeDifference(controller.timestamp) }}
@@ -158,9 +158,11 @@
 
                 <v-row no-gutters class="border-row">
                   <v-col cols="6" class="border-cell no-border-left no-border-bottom">
-                    {{ controller.endorsment === "NIL" ? " " : controller.endorsment }}
+                    {{ controller.endorsment === "NIL" ? " " : parseEndorsment(controller.endorsment) }}
                   </v-col>
-                  <v-col cols="6" class="border-cell no-border-right no-border-bottom">&nbsp;</v-col>
+                  <v-col cols="6" class="border-cell no-border-right no-border-bottom">
+                    {{ controller.callsign ||  "other" }} &nbsp
+                  </v-col>
                 </v-row>
               </v-card-text>
             </div>
@@ -322,9 +324,6 @@
         </v-card>
       </v-dialog>
     </v-container>
-    <main>
-      <RouterView />
-    </main>
   </template>
 
   <script setup lang="ts">
@@ -332,9 +331,8 @@
   import { VueDraggable } from "vue-draggable-plus"
   import moment from "moment"
 
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001"
 
-  const requiredPassword = "mySecretPassword"
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001"
 
   interface Controller {
     name: string;
@@ -475,13 +473,24 @@
   }
 
   function isAuthorized() {
-    console.log(authorized)
     if (authorized.value) {
         return true;
     } else {
         alert("not authrorized, please login")
         return false;
     }
+  }
+
+
+
+  const parseEndorsment = (endorsementStr: string) => {
+    if (endorsementStr === '{NULL}' || endorsementStr == undefined) {
+      return "NIL";
+    }
+    const matches = endorsementStr.match(/\w\d \w+/g) || [];
+    const endorsment = matches.join(", ");
+    if (endorsments == null) { return "NIL" }
+    return endorsment;
   }
 
 
@@ -498,18 +507,18 @@
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          password: password
+          password: password.value
         })
       })
       const data = await response.json()
-      if(data.authorized) {
+      if(data.authorized == true) {
+        console.log("authorized")
         authorized.value = true;
         errorMessage.value = "";
       } else {
         errorMessage.value = "Authorization failed. Please try again.";
       }
     } catch {
-    authorized.value = true;
     errorMessage.value = "An error occurred. Please try again.";
   }
   password.value = ""; // Clear password after attempt
@@ -536,7 +545,6 @@
       const data = await response.json()
 
       predefinedControllers.value = data.Controllers || []
-      console.log(data);
     } catch(error) {
       console.error("Error fetching predefined controller data:", error)
     }
@@ -693,7 +701,7 @@
     if (!timestamp) return "--:--:--"
 
     const currentTime = new Date().getTime();
-    const startTime = new Date(timestamp).getTime() - new Date().getTimezoneOffset() * 60000; // Local time is automatically used here
+    const startTime = new Date(timestamp).getTime(); // Local time is automatically used here
 
     const diffInSeconds = Math.floor((currentTime - startTime) / 1000);
 
@@ -701,7 +709,6 @@
     const hours = String(Math.floor(diffInSeconds / 3600)).padStart(2, "0");
     const minutes = String(Math.floor((diffInSeconds % 3600) / 60)).padStart(2, "0");
     const seconds = String(diffInSeconds % 60).padStart(2, "0");
-
 
     return `${hours}:${minutes}:${seconds}`
   }

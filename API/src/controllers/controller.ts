@@ -16,7 +16,6 @@ export async function getAllControllersHandler(req: Request, res: Response) {
     try {
         const data = await activeControllersService();
         const finalData = sortControllers(data);
-        console.log(finalData);
         res.status(200).json(finalData);
     } catch (error) {
         if (error instanceof Error) {
@@ -77,7 +76,7 @@ export async function postController(req: Request, res: Response) {
     if (movecs == undefined) movecs == "paus";
     const cid = req.body.controller.cid;
 
-    console.log(cid, movepost, movecs);
+    console.log("Moved: ", cid, " to position ", movepost, " with callsign ",movecs);
     
     if (!InputReadable) {
         res.status(400).json({ 

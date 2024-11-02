@@ -7,7 +7,6 @@ import { IActivity, OActivity, SkeletonController, State, Rating, Endorsement, N
  */
 export async function activeControllersService(): Promise<{ Controllers: Controller[], length: number | null}> {
     try {
-        // TODO take active data
         const result = await activeControllers();
         const len = result.rowCount;
 
@@ -27,7 +26,8 @@ export async function activeControllersService(): Promise<{ Controllers: Control
                 callsign: ctrl.callsign,
                 frequency: '123.45',
                 position: ctrl.position,
-                timestamp: ctrl.timestamp
+                timestamp: ctrl.timestamp,
+                endorsment: ctrl.endorsements
             };
         });
 
@@ -103,7 +103,6 @@ export async function createControllerService(cid: string, name: string, sign: s
         return undefined; // not valid cid must be between 6-7 numbers.
     }
 
-    // parse endorsements, how are they passed? 
     const endorsements = parseEndorsement(endorsement);
 
     const newctrl: NewController = {
@@ -115,7 +114,6 @@ export async function createControllerService(cid: string, name: string, sign: s
     }
     // add controller to controller table.
     const createControllerResult = await addController(newctrl);
-    console.log(createControllerResult);
     if (createControllerResult.rowCount == null || createControllerResult.rowCount < 0) {
         console.error("failed to add", cid , "not valid.");
         return undefined;

@@ -73,10 +73,8 @@ export async function postController(req: Request, res: Response) {
     const InputReadable = validateInputControllerData(req.body);
     const movepost = req.body.controller.position;
     let movecs = req.body.controller.callsign;
-    if (movecs == undefined) movecs == "paus";
     const cid = req.body.controller.cid;
-
-    console.log("Moved: ", cid, " to position ", movepost, " with callsign ",movecs);
+    
     
     if (!InputReadable) {
         res.status(400).json({ 
@@ -87,7 +85,7 @@ export async function postController(req: Request, res: Response) {
 
     // validPrompt - The given input links to a controller in the database. 
     const validController = await getControllerByCIDService(cid);
-
+    
     // validController - Controller type
     //const validController = convertDBResponseToController(validPrompt);
 
@@ -95,7 +93,7 @@ export async function postController(req: Request, res: Response) {
         res.status(500).json({ error: "Controller was not found in the database."})
         return;
     }
-
+    
     // Control that the controller is in a active state (Position, break or other).
     // Also check that the controller is not already in the state that we move that controller too.
     const {isActive, activeState} = await getActiveStatus(validController.rows[0].cid);
@@ -103,11 +101,16 @@ export async function postController(req: Request, res: Response) {
         res.status(400).json({ error: "Controller is either not active or in same state." });
         return;
     }
-
+    
     // Validation complete -> change the state.
-
+    if (determineStateService(movepost) == 'ACTIVE' && movecs == '') {
+        movecs = inferCallsign(movepost);
+    } else {
+        if (movecs == undefined) movecs == "paus";
+    }
+    
+    console.log("Moved: ", cid, " to position ", movepost, " with callsign ",movecs);
     try {
-        console.log(movepost);
         const updatedController = await changeStateService(validController.rows[0].cid, movepost, movecs);
         res.status(201).json({ updated: updatedController.rows[0]});
 
@@ -117,6 +120,14 @@ export async function postController(req: Request, res: Response) {
     }
 
 }
+
+const inferCallsign = (pos: string) => {
+    const positions = ["GG APP", "GG TWR", "GG GND", "GG DEL", "SA TWR", "SA GND", "SA DEL"];
+    if (positions.includes(pos)) {
+        return pos;
+    }
+
+};
 
 export async function getOneController(req: Request, res: Response) {
     try {

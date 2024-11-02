@@ -43,6 +43,7 @@
               v-for="controller in activeControllers"
               :key="controller.cid"
               class="cursor-move white-bg lighten-5 mb-2 position-relative"
+              :class="{ 'online-card': controller.position?.toLowerCase() === 'online'}"
               :style="getBorderColor(controller)"
               @dragstart="onDragStart(controller)"
             >
@@ -1106,5 +1107,9 @@
   .v-card-actions {
     padding-top: 16px;
     border-top: 1px solid rgba(0, 0, 0, 0.12);
+  }
+
+  .online-card {
+    background-color: #eff3cf;
   }
   </style>

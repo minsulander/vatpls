@@ -27,3 +27,4 @@ tsconfig.tsbuildinfo
 test-result*.xml
 run API.bat
 API/build
+/build

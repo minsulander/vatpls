@@ -1,0 +1,15 @@
+[Unit]
+Description=VatPLS API
+Documentation=https://vatiris.se
+After=network.target
+
+[Service]
+Type=simple
+User=main
+WorkingDirectory=/home/main/plsapi
+EnvironmentFile=/home/main/plsapi/plsapi.env
+ExecStart=/usr/bin/node build/src/server.js
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

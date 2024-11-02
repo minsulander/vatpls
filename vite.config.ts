@@ -35,9 +35,9 @@ export default defineConfig({
             registerType: "autoUpdate",
             devOptions: { enabled: true },
             manifest: {
-                name: "VATScout",
-                short_name: "VATScout",
-                description: "Helps you keep an eye on what's happening on VATSIM",
+                name: "VatPLS",
+                short_name: "VatPLS",
+                description: "VATSIM PositionsLedningsSystem",
                 theme_color: "#1e2022",
                 icons: [
                     {
@@ -57,14 +57,14 @@ export default defineConfig({
                         sizes: "1024x768",
                         type: "image/png",
                         form_factor: "wide",
-                        label: "VATScout",
+                        label: "VatPLS",
                     },
                     {
                         src: "/screenshots/iphone_se.png",
                         sizes: "750x1334",
                         type: "image/png",
                         form_factor: "narrow",
-                        label: "VATScout",
+                        label: "VatPLS",
                     },
                 ],
             },

@@ -42,5 +42,5 @@ CREATE TABLE IF NOT EXISTS Endorsements(
 
 CREATE TABLE IF NOT EXISTS SessionThresholds(
     threshold       TEXT PRIMARY KEY NOT NULL,
-    threshold_time  INT NOT NULL,
+    threshold_time  INT NOT NULL
 );

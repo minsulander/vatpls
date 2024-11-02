@@ -44,7 +44,7 @@ export const cid_query = async (cid: string): Promise <QueryResult<SkeletonContr
 export const activeControllers = async (): Promise<QueryResult<OActive>> => {
     return query_database(
         `
-        SELECT 
+        SELECT
         controller.controller_name AS name,
         controller.sign,
         controller.cid,
@@ -65,9 +65,9 @@ export const addController = async (controllerToAdd: NewController): Promise <Qu
         const ControllerQuerry = `INSERT INTO Controller VALUES ($1, $2, $3, $4); `;
 
         await client.query(ControllerQuerry, [controllerToAdd.cid, controllerToAdd.name, controllerToAdd.sign, controllerToAdd.rating]);
-    
+
         if (controllerToAdd.rating != "C1" && controllerToAdd.endorsement) {
-            const endorsementQuerry = `INSERT INTO endorsements VALUES ($1, $2);` 
+            const endorsementQuerry = `INSERT INTO endorsements VALUES ($1, $2);`
             for (const endor of controllerToAdd.endorsement) {
                 const endorsementParams = [controllerToAdd.cid, endor];
                 await client.query(endorsementQuerry, endorsementParams);

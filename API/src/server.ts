@@ -10,6 +10,8 @@ import { getAllControllers } from "./routes/development";
 import { activeControllersService } from "./services/controllerServices";
 import { sortControllers } from "./controllers/controller";
 
+import { query_database } from "./db/database";
+
 const DEV_MODE = false; // set to true if use system without database, otherwise set false.
 
 const app = express();
@@ -28,6 +30,13 @@ if (DEV_MODE) {
     app.use("/api", devRoute)
 } else {
     console.log("database in use");
+    try {
+        query_database("SELECT 1;")
+            .then(() => console.log("Connected to database"))
+            .catch(e => console.error("Database error:", e))
+    } catch (e) {
+        console.error(e);
+    }
     app.use("/api", controllersRoute);
     //app.use("/api", activityRoute);
     //app.use("/api", sessionsRoute);
@@ -54,11 +63,12 @@ app.get('/subscribe', async (req, res) => {
     let idx = 0;
     while (true) {
         await new Promise(resolve => setTimeout(resolve, 5000));
-        
-        const ctrlData = sortControllers(await activeControllersService());
 
-        console.log(ctrlData);
-        res.write(`data: ${JSON.stringify(ctrlData)}\n\n`);
+        const ctrlData = sortControllers(await activeControllersService());
+        if (ctrlData) {
+            console.log(ctrlData);
+            res.write(`data: ${JSON.stringify(ctrlData)}\n\n`);
+        }
 
 
         if (connection == "closed") break;

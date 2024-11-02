@@ -1,6 +1,7 @@
 {
   "scripts": {
     "start": "tsc && node build/src/server.js",
+    "build": "tsc",
     "test": "jest --runInBand"
   },
   "dependencies": {

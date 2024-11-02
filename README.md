@@ -10,7 +10,7 @@ VatPLS is a webapp for keeping track of controller/position staffing during "liv
 
 Contributions of any kind are most welcome.
 
-- Please file bug reports and/or feature requests as [issues]([https://github.com/minsulander/vatscout/issues](https://github.com/maxlk96/vatpls/issues)).
+- Please file bug reports and/or feature requests as [issues](https://github.com/minsulander/vatpls/issues).
 - Pull requests are welcome.
 
 ### For developers

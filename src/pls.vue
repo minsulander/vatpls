@@ -219,11 +219,14 @@
                 :rules="[(v: string) => !!v || 'Rating is required']"
               ></v-select>
               <v-select
-                v-model="newController.endorsment"
+                v-model="tempEndorsment"
                 :items="endorsments"
-                label="Endorsment"
-                :rules="[(v: string) => !!v || 'Endorsment is required']"
-              ></v-select>
+                label="Endorsment"  
+                chips
+                multiple
+                :rules="[(v: string) => !!v && v.length > 0 || 'Endorsment is required']"
+              >
+            </v-select>
             </v-form>
           </v-card-text>
           <v-card-actions>
@@ -348,7 +351,7 @@
   }
 
   const ratings = [ "S1", "S2", "S3", "C1" ]
-  const endorsments = [ "NIL", "T2 APS", "T1 TWR", "T1 APP" ]
+  const endorsments = ["NIL", "T2 APS", "T1 TWR", "T1 APP"]
   const positions = [ "Online", "GG APP", "GG TWR", "GG GND", "GG DEL", "SA TWR", "SA GND", "SA DEL", "SA AD+", "ACC1", "ACC2", "ACC3", "ACC4", "ACC5", "ACC6", "APP1", "APP2", "APP3", "WS", "Ö1", "Ö2" ]
 
   const positionGroups = ref([
@@ -382,8 +385,8 @@
   const showAwayDialog = ref(false)
 
   const authorized = ref(false)
-    const password = ref("")
-    const errorMessage = ref("")
+  const password = ref("")
+  const errorMessage = ref("")
 
   const selectedPosition = ref("")
   const isValidPosition = computed(() => positions.includes(selectedPosition.value))
@@ -412,6 +415,8 @@
   const backupControllerNames = ref<Controller[] | null>(null)
   const backupAwayControllers = ref<Controller[] | null>(null)
   const backupControllers = ref(false)
+
+  const tempEndorsment = ref<string[]>([]);
 
   const newController = ref({
     name: "",
@@ -443,7 +448,7 @@
       /^[a-zA-Z]{2}$/.test(newController.value.sign) &&
       /^\d{5,8}$/.test(newController.value.cid) &&
       !!newController.value.rating &&
-      !!newController.value.endorsment
+      !!tempEndorsment
     )
   })
 
@@ -474,20 +479,21 @@
   }
 
   function isAuthorized() {
-    if (authorized.value) {
+    if (authorized.value == true) {
         return true;
-    } else {
-        alert("not authrorized, please login")
+    } else if (localStorage.getItem("authkey") === 'true') {
+      return true;
+    }
+    else {
         return false;
     }
   }
 
-
-
-  const parseEndorsment = (endorsementStr: string) => {
+  const parseEndorsment = (endorsementStr: string | string[]) => {
     if (endorsementStr === '{NULL}' || endorsementStr == undefined) {
       return "NIL";
     }
+    if (typeof(endorsementStr) != "string") { return " "}
     const matches = endorsementStr.match(/\w\d \w+/g) || [];
     const endorsment = matches.join(", ");
     if (endorsments == null) { return "NIL" }
@@ -515,6 +521,7 @@
       if(data.authorized == true) {
         console.log("authorized")
         authorized.value = true;
+        localStorage.setItem("authkey", "true");
         errorMessage.value = "";
       } else {
         errorMessage.value = "Authorization failed. Please try again.";
@@ -570,7 +577,7 @@
   }
 
   const addControllerToDB = async (newcontroller: Controller) =>  {
-
+    console.log(newcontroller)
     try {
       await fetch(`${apiBaseUrl}/api/controller/new`, {
         method: "POST",
@@ -609,6 +616,7 @@
     if (isNewControllerFormValid.value) {
       const newCreatedController = {
         ...newController.value,
+        endorsment: tempEndorsment.value.join(", "),
         sign: newController.value.sign.toUpperCase(),
         timestamp: new Date().toISOString()
       }
@@ -625,6 +633,7 @@
         endorsment: "",
         timestamp: new Date().toISOString()
       }
+      tempEndorsment.value.length = 0;
 
       showNewControllerDialog.value = false
       showControllerDialog.value = false
@@ -781,10 +790,11 @@
 
 
   // Fetch data from the server when the component is mounted
-  onMounted(() => {
+  onMounted(async () => {
     fetchControllers()
     fetchPredefinedControllers()
     refreshTime()
+    authorized.value = isAuthorized()
     unsubscribe = subscribe();
   })
 
@@ -940,7 +950,7 @@
     return [
       {background: bgColor},
       {color: txtColor},
-      {'font-weight': "bold"},
+      //{'font-weight': "bold"},
     ];
 
   };

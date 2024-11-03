@@ -125,6 +125,9 @@ const inferCallsign = (pos: string) => {
     const positions = ["GG APP", "GG TWR", "GG GND", "GG DEL", "SA TWR", "SA GND", "SA DEL"];
     if (positions.includes(pos)) {
         return pos;
+    } else {
+        // Should it enforce the need for a callsign for some positions?
+        return " ";
     }
 
 };
@@ -136,9 +139,11 @@ export async function getOneController(req: Request, res: Response) {
             [req.params.id.toString()]
         );
 
-        return res.json({ rowCount: result.rowCount, rows: result.rows });
+        res.json({ rowCount: result.rowCount, rows: result.rows });
+        return;
     } catch (error: any) {
-        return res.status(500).json({error: error.message });
+        res.status(500).json({error: error.message });
+        return;
     }   
 }
 
@@ -190,6 +195,7 @@ export async function addNewController(req: Request, res: Response) {
     const obj = req.body.Controller;
     // Create new controller.
     if (obj && obj.cid && obj.name && obj.rating) {
+        console.log(obj.endorsment)
         const createResult = await createControllerService(obj.cid, obj.name, obj.sign, obj.rating, obj.endorsment);
         if (createResult == undefined) {
             res.status(500).json({ error: "Unknown error occured adding user."});

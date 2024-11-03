@@ -102,7 +102,7 @@ export async function createControllerService(cid: string, name: string, sign: s
         console.error(cid, "CID not valid. The length of cid: ", cid.length);
         return undefined; // not valid cid must be between 6-7 numbers.
     }
-
+    
     const endorsements = parseEndorsement(endorsement);
 
     const newctrl: NewController = {
@@ -137,16 +137,28 @@ export async function createControllerService(cid: string, name: string, sign: s
 }
 
 /** Parses endorsement string to list of Endorsements. Will return empty if no endorsement given */
-export const parseEndorsement = (endorsement: string): Endorsement[]  => {
+export const parseEndorsement = (endorsement: string | string[]): Endorsement[]  => {
     let endorsementls: Endorsement[] = [];
-    if (endorsement.match('T2 APS')?.length == 1) {
-        endorsementls.push("T2 APS");
-    }
-    if (endorsement.match('T1 TWR')?.length == 1) {
-        endorsementls.push("T1 TWR");
-    }
-    if (endorsement.match('T1 APP')?.length == 1) {
-        endorsementls.push("T1 APP");
+    if (typeof(endorsement) === 'string') {
+        if (endorsement.match('T2 APS')?.length == 1) {
+            endorsementls.push("T2 APS");
+        }
+        if (endorsement.match('T1 TWR')?.length == 1) {
+            endorsementls.push("T1 TWR");
+        }
+        if (endorsement.match('T1 APP')?.length == 1) {
+            endorsementls.push("T1 APP");
+        }
+    } else {
+        if (endorsement.includes("T2 APS")) {
+            endorsementls.push("T2 APS");
+        } 
+        if (endorsement.includes("T1 TWR")) {
+            endorsementls.push("T1 TWR");
+        }
+        if (endorsement.includes("T1 APP")) {
+            endorsementls.push("T1 APP");
+        }
     }
 
     return endorsementls;

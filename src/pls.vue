@@ -65,7 +65,7 @@
 
                 <v-row no-gutters class="border-row">
                   <v-col cols="6" class="border-cell no-border-left no-border-bottom">
-                    {{ controller.endorsment === "NIL" ? " " : parseEndorsment(controller.endorsment) }}
+                    {{ controller.endorsment === "NIL" ? " " : parseEndorsment(controller.endorsment, controller.rating) }}
                   </v-col>
                   <v-col cols="6" class="border-cell no-border-right no-border-bottom">
                     {{ controller.callsign.length > 0 ? controller.callsign : "&nbsp;" }}
@@ -113,7 +113,7 @@
 
                 <v-row no-gutters class="border-row">
                   <v-col cols="6" class="border-cell no-border-left no-border-bottom">
-                    {{ controller.endorsment === "NIL" ? " " : parseEndorsment(controller.endorsment) }}
+                    {{ controller.endorsment === "NIL" ? " " : parseEndorsment(controller.endorsment, controller.rating) }}
                   </v-col>
                   <v-col cols="6" class="border-cell no-border-right no-border-bottom">&nbsp;</v-col>
                 </v-row>
@@ -159,7 +159,7 @@
 
                 <v-row no-gutters class="border-row">
                   <v-col cols="6" class="border-cell no-border-left no-border-bottom">
-                    {{ controller.endorsment === "NIL" ? " " : parseEndorsment(controller.endorsment) }}
+                    {{ controller.endorsment === "NIL" ? " " : parseEndorsment(controller.endorsment, controller.rating) }}
                   </v-col>
                   <v-col cols="6" class="border-cell no-border-right no-border-bottom">
                     {{ controller.callsign ||  "other" }} &nbsp
@@ -489,15 +489,37 @@
     }
   }
 
-  const parseEndorsment = (endorsementStr: string | string[]) => {
+  const parseEndorsment = (endorsementStr: string | string[], rating: string) => {
+    // Rating = {C1} => All endorsement, show none.
+    if (rating === "C1") return " ";
+    
+    // If something is given wrong or if the str is NULL (other words no rating, display NIL)
     if (endorsementStr === '{NULL}' || endorsementStr == undefined) {
       return "NIL";
     }
     if (typeof(endorsementStr) != "string") { return " "}
-    const matches = endorsementStr.match(/\w\d \w+/g) || [];
-    const endorsment = matches.join(", ");
+    
+    // Match "T1 APP", "T2 APS" etc.
+    let matches = endorsementStr.match(/\w\d \w+/g) || [];
+
+    let strmatches = [];
+    for (const match of matches) {
+      strmatches.push(match.toString());
+    } 
+
+    // Remove endorsements that are implied by the rating.
+    if (rating === "S3") {
+      if (strmatches.includes("T1 APP")) {
+        strmatches = strmatches.filter((val) => val === "T1 APP");
+      } else {
+        strmatches = strmatches.filter((val) => val === "T1 APP" || val === "T1 TWR");
+      }
+    }
+
+    const result = strmatches.join(", ");
     if (endorsments == null) { return "NIL" }
-    return endorsment;
+    
+    return result;
   }
 
 

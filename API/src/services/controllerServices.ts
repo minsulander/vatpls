@@ -113,7 +113,13 @@ export async function createControllerService(cid: string, name: string, sign: s
         endorsement: endorsements
     }
     // add controller to controller table.
-    const createControllerResult = await addController(newctrl);
+    let createControllerResult;
+    try {
+        createControllerResult = await addController(newctrl);
+    } catch {
+        console.error("controller", cid, "already exists.");
+        return undefined;
+    }
     if (createControllerResult.rowCount == null || createControllerResult.rowCount < 0) {
         console.error("failed to add", cid , "not valid.");
         return undefined;

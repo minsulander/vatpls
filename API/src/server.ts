@@ -39,8 +39,8 @@ if (DEV_MODE) {
         console.error(e);
     }
     app.use("/api", controllersRoute, authRouter);
+    app.use("/api", sessionsRoute);
     //app.use("/api", activityRoute);
-    //app.use("/api", sessionsRoute);
 }
 
 /** 

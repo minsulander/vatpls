@@ -68,7 +68,7 @@
                     {{ controller.endorsment === "NIL" ? " " : parseEndorsment(controller.endorsment, controller.rating) }}
                   </v-col>
                   <v-col cols="6" class="border-cell no-border-right no-border-bottom">
-                    {{ controller.callsign.length > 0 ? controller.callsign : "&nbsp;" }}
+                    {{ controller.callsign.length > 0 ? controller.callsign : "&nbsp;" }} &nbsp;
                   </v-col>
                 </v-row>
               </v-card-text>
@@ -495,7 +495,7 @@
     
     // If something is given wrong or if the str is NULL (other words no rating, display NIL)
     if (endorsementStr === '{NULL}' || endorsementStr == undefined) {
-      return "NIL";
+      return " ";
     }
     if (typeof(endorsementStr) != "string") { return " "}
     

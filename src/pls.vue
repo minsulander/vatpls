@@ -334,6 +334,7 @@
   import { ref, onMounted, onUnmounted, computed, nextTick, watch, Ref } from "vue"
   import { VueDraggable } from "vue-draggable-plus"
   import moment from "moment"
+import { match } from "node:assert";
 
 
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001"
@@ -501,11 +502,16 @@
     
     // Match "T1 APP", "T2 APS" etc.
     let matches = endorsementStr.match(/\w\d \w+/g) || [];
+    // Solo matching
+    const solomatchers = endorsementStr.match(/SOLO G{2} \w{3}/g) || [];
 
     let strmatches = [];
     for (const match of matches) {
       strmatches.push(match.toString());
     } 
+    for (const solo of solomatchers) {
+      strmatches.push(solo.toString());
+    }
 
     // Remove endorsements that are implied by the rating.
     if (rating === "S3") {
@@ -517,7 +523,7 @@
     }
 
     const result = strmatches.join(", ");
-    if (endorsments == null) { return "NIL" }
+    if (result == null) { return " " }
     
     return result;
   }

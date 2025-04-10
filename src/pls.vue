@@ -846,6 +846,9 @@
     refreshTime()
     authorized.value = isAuthorized()
     unsubscribe = subscribe();
+
+    // Add global keydown listener
+    window.addEventListener('keydown', handleDialogueKeypress)
   })
 
   const stopWatch = watch([activeControllers, controllerNames, awayControllers], () => {
@@ -865,7 +868,24 @@
     if (unsubscribe) {
       unsubscribe();
     }
+    // Remove global keydown listener
+    window.removeEventListener('keydown', handleDialogueKeypress)
   })
+
+  function handleDialogueKeypress(event: KeyboardEvent) {
+    if (event.key === 'Enter') {
+      if (showPauseDialog.value) {
+        event.preventDefault()
+        confirmPause()
+      } else if (showPositionDialog.value) {
+        event.preventDefault()
+        confirmPosition()
+      } else if (showAwayDialog.value) {
+        event.preventDefault()
+        confirmAway()
+      }
+    }
+  }
 
   function onAddPosition() {
     backupControllers.value = true
@@ -898,6 +918,7 @@
   }
 
   function confirmPause() {
+    console.log("confirmPause")
     if(selectedController.value) {
       const controller = controllerNames.value.find(controller => controller.cid === selectedController.value?.cid);
       if(controller) {

@@ -144,27 +144,21 @@ export async function createControllerService(cid: string, name: string, sign: s
 
 /** Parses endorsement string to list of Endorsements. Will return empty if no endorsement given */
 export const parseEndorsement = (endorsement: string | string[]): Endorsement[]  => {
+    const validEndorsements: Endorsement[] = ["T2 APS", "T1 TWR", "T1 APP", "SOLO GG TWR", "SOLO GG APP"];
     let endorsementls: Endorsement[] = [];
+
     if (typeof(endorsement) === 'string') {
-        if (endorsement.match('T2 APS')?.length == 1) {
-            endorsementls.push("T2 APS");
-        }
-        if (endorsement.match('T1 TWR')?.length == 1) {
-            endorsementls.push("T1 TWR");
-        }
-        if (endorsement.match('T1 APP')?.length == 1) {
-            endorsementls.push("T1 APP");
-        }
+        validEndorsements.forEach(validEndorsement => {
+            if (endorsement.match(validEndorsement)?.length === 1) {
+                endorsementls.push(validEndorsement);
+            }
+        });
     } else {
-        if (endorsement.includes("T2 APS")) {
-            endorsementls.push("T2 APS");
-        } 
-        if (endorsement.includes("T1 TWR")) {
-            endorsementls.push("T1 TWR");
-        }
-        if (endorsement.includes("T1 APP")) {
-            endorsementls.push("T1 APP");
-        }
+        validEndorsements.forEach(validEndorsement => {
+            if (endorsement.includes(validEndorsement)) {
+                endorsementls.push(validEndorsement);
+            }
+        });
     }
 
     return endorsementls;

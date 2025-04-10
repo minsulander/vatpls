@@ -26,10 +26,12 @@
 
       <v-row class="d-flex flex-grow-1">
         <!-- Left Column: Position (Active Controllers) -->
-        <v-col class="d-flex flex-column">
+        <v-col class="d-flex flex-column" style="height: 90vh;">
           <h2>Active</h2>
           <VueDraggable
             class="d-flex flex-column gap-2 pa-4 flex-grow-1 bg-grey darken-3 overflow-auto"
+            style="max-height: 100%;"
+            ref="activeContainer"
             v-model="activeControllers"
             :animation="100"
             ghostClass="ghost"
@@ -38,6 +40,7 @@
             @update="onUpdate"
             @add="onAddPosition"
             @remove="onRemove"
+            @scroll="() => saveScrollPosition('active')"
           >
             <div
               v-for="controller in activeControllers"
@@ -77,10 +80,12 @@
         </v-col>
 
         <!-- Middle Column: Paus (Available Controllers) -->
-        <v-col class="d-flex flex-column">
+        <v-col class="d-flex flex-column" style="height: 90vh;">
           <h2>Break</h2>
           <VueDraggable
             class="d-flex flex-column gap-2 pa-4 flex-grow-1 bg-grey darken-3 overflow-auto"
+            style="max-height: 100%;"
+            ref="breakContainer"
             v-model="controllerNames"
             :animation="100"
             ghostClass="ghost"
@@ -89,6 +94,7 @@
             @update="onUpdate"
             @add="onAddPause"
             @remove="onRemove"
+            @scroll="() => saveScrollPosition('break')"
           >
             <div
               v-for="controller in controllerNames"
@@ -123,10 +129,12 @@
         </v-col>
 
         <!-- Right Column: Övrig tid (Away Controllers) -->
-        <v-col class="d-flex flex-column">
+        <v-col class="d-flex flex-column" style="height: 90vh;">
           <h2>Other</h2>
           <VueDraggable
             class="d-flex flex-column gap-2 pa-4 flex-grow-1 bg-grey darken-3 overflow-auto"
+            style="max-height: 100%;"
+            ref="otherContainer"
             v-model="awayControllers"
             :animation="100"
             ghostClass="ghost"
@@ -135,6 +143,7 @@
             @update="onUpdate"
             @add="onAddAway"
             @remove="onRemove"
+            @scroll="() => saveScrollPosition('other')"
           >
             <div
               v-for="controller in awayControllers"
@@ -175,8 +184,13 @@
         <v-card>
           <v-card-title>Start shift</v-card-title>
           <v-card-text>
-            <v-form ref="controllerForm">
-              <v-text-field v-model="newController.cid" label="CID" autofocus></v-text-field>
+            <v-form ref="controllerForm" @submit.prevent>
+              <v-text-field 
+                v-model="newController.cid" 
+                label="CID" 
+                autofocus
+                @keyup.enter="startSession"
+              ></v-text-field>
               <p v-if="controllerMatch()" class="ml-4">{{ isActiveController(newController) ? "Controller is already active" : foundController?.name + " found" }}</p>
               <p v-else-if="newController.cid.length > 0" class="ml-4">Incorrect CID</p>
               <v-card-actions>
@@ -245,8 +259,13 @@
         <v-card>
           <v-card-title>End shift</v-card-title>
           <v-card-text>
-            <v-form ref="removeControllerForm">
-              <v-text-field v-model="newController.cid" label="CID" autofocus></v-text-field>
+            <v-form ref="removeControllerForm" @submit.prevent>
+              <v-text-field 
+                v-model="newController.cid" 
+                label="CID" 
+                autofocus 
+                @keydown.enter="stopSession"
+              ></v-text-field>
               <p v-if="controllerMatchLogoff()" class="ml-4">{{ foundController?.name }} found</p>
               <p v-else-if="newController.cid.length > 0" class="ml-4">Incorrect CID</p>
               <v-card-actions>
@@ -331,10 +350,9 @@
   </template>
 
   <script setup lang="ts">
-  import { ref, onMounted, onUnmounted, computed, nextTick, watch, Ref } from "vue"
+  import { ref, onMounted, onUnmounted, computed, nextTick, watch, Ref, ComponentPublicInstance } from "vue"
   import { VueDraggable } from "vue-draggable-plus"
   import moment from "moment"
-import { match } from "node:assert";
 
 
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001"
@@ -352,7 +370,7 @@ import { match } from "node:assert";
   }
 
   const ratings = [ "S1", "S2", "S3", "C1" ]
-  const endorsments = ["NIL", "T2 APS", "T1 TWR", "T1 APP"]
+  const endorsments = ["NIL", "T2 APS", "T1 TWR", "T1 APP", "SOLO GG TWR", "SOLO GG APP"]
   const positions = [ "Online", "GG APP", "GG TWR", "GG GND", "GG DEL", "SA TWR", "SA GND", "SA DEL", "SA AD+", "ACC1", "ACC2", "ACC3", "ACC4", "ACC5", "ACC6", "APP1", "APP2", "APP3", "WS", "Ö1", "Ö2" ]
 
   const positionGroups = ref([
@@ -377,6 +395,16 @@ import { match } from "node:assert";
       positions: ["Online", "Ö1", "Ö2", "WS"]
     }
   ]);
+
+  const activeContainer = ref<ComponentPublicInstance | null>(null);
+  const breakContainer = ref<ComponentPublicInstance | null>(null);
+  const otherContainer = ref<ComponentPublicInstance | null>(null);
+
+  const scrollableContainers = {
+    active: activeContainer,
+    break: breakContainer,
+    other: otherContainer
+  }
 
   const showControllerDialog = ref(false)
   const showNewControllerDialog = ref(false)
@@ -500,18 +528,11 @@ import { match } from "node:assert";
     }
     if (typeof(endorsementStr) != "string") { return " "}
     
-    // Match "T1 APP", "T2 APS" etc.
-    let matches = endorsementStr.match(/\w\d \w+/g) || [];
-    // Solo matching
-    const solomatchers = endorsementStr.match(/SOLO G{2} \w{3}/g) || [];
-
-    let strmatches = [];
-    for (const match of matches) {
-      strmatches.push(match.toString());
-    } 
-    for (const solo of solomatchers) {
-      strmatches.push(solo.toString());
-    }
+    // Match all valid endorsements
+    const validEndorsements = ["T2 APS", "T1 TWR", "T1 APP", "SOLO GG TWR", "SOLO GG APP"];
+    let strmatches = validEndorsements.filter(endorsement => 
+      endorsementStr.match(endorsement)?.length === 1
+    );
 
     // Remove endorsements that are implied by the rating.
     if (rating === "S3") {
@@ -827,6 +848,18 @@ import { match } from "node:assert";
     unsubscribe = subscribe();
   })
 
+  const stopWatch = watch([activeControllers, controllerNames, awayControllers], () => {
+    // Check if data has been loaded. If not, it's not possible to restore scroll position.
+    if (activeControllers.value.length > 0 || controllerNames.value.length > 0 || awayControllers.value.length > 0) {
+      nextTick(() => {
+        Object.keys(scrollableContainers).forEach(bay => {
+          restoreScrollPosition(bay)
+        })
+        stopWatch() // Stop watching after first trigger
+      })
+    }
+  })
+
   onUnmounted(() => {
     clearInterval(refreshInterval);
     if (unsubscribe) {
@@ -1058,6 +1091,28 @@ import { match } from "node:assert";
       positionList.value.$el.scrollTop = 0
     }
   }
+
+  const saveScrollPosition = (bay: string) => {
+    const container = scrollableContainers[bay as keyof typeof scrollableContainers]
+    if (container.value?.$el) {
+      localStorage.setItem(`scroll_${bay}`, container.value.$el.scrollTop.toString())
+    }
+  }
+
+  const restoreScrollPosition = (bay: string) => {
+    nextTick(() => {
+      const container = scrollableContainers[bay as keyof typeof scrollableContainers]
+      if (container.value?.$el) {
+        const savedPosition = localStorage.getItem(`scroll_${bay}`)
+        if (savedPosition) {
+          container.value.$el.scrollTop = parseInt(savedPosition)
+        }
+      }
+    })
+  }
+
+
+
   </script>
 
   <style scoped>

@@ -39,7 +39,7 @@ export interface SkeletonController {
   rating: Rating;
 };
 
-export type Endorsement = 'NIL' | 'T1 APP' | 'T2 APS' | 'T1 TWR';
+export type Endorsement = 'NIL' | 'T1 APP' | 'T2 APS' | 'T1 TWR' | 'SOLO GG TWR' | 'SOLO GG APP';
 
 export interface NewController extends SkeletonController {
   endorsement: Endorsement[];

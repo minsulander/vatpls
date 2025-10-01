@@ -1,4 +1,3 @@
-import pinia from "./store"
 import router from "./router"
 import moment from "moment"
 import { createVuetify } from "vuetify"
@@ -35,6 +34,6 @@ import { createApp } from "vue"
 const app = createApp(App)
 
 app.provide("moment", moment)
-app.use(vuetify).use(router).use(pinia)
+app.use(vuetify).use(router)
 
 app.mount("#app")

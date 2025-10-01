@@ -3,15 +3,15 @@ import { createRouter, createWebHistory, isNavigationFailure } from "vue-router"
 
 const routes = [
     {
-        path: '/',
-        name: 'ControllerList',
-        component: () => import('@/pls.vue'),
+        path: "/",
+        name: "ControllerList",
+        component: () => import("@/views/pls.vue"),
     },
     {
-        path: '/ws',
-        name: 'AdminPanel',
-        component: () => import('@/ws.vue'),
-    }
+        path: "/ws",
+        name: "AdminPanel",
+        component: () => import("@/views/ws.vue"),
+    },
 ]
 
 const router = createRouter({

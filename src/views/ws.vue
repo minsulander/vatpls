@@ -2,43 +2,31 @@
     <div class="ws-panel">
         <h1>WS Panel</h1>
 
-        <div class="chart-section">
-            <h2>Activity Chart</h2>
-            <div class="chart-container">
-                <Bar :data="chartData2" :options="chartOptions2" ref="chartRef" />
-            </div>
-        </div>
+        <v-tabs v-model="tab">
+            <v-tab v-for="tabPages in tabs"> {{ tabPages }} </v-tab>
+        </v-tabs>
 
-        <div class="info-sections">
-            <div>
-                <h2>Positions</h2>
-                <div style="min-height: 100px; max-width: 100px; background-color: cadetblue"></div>
-            </div>
-            <div>
-                <h2>Controllers</h2>
-                <div style="min-height: 100px; max-width: 100px; background-color: cadetblue"></div>
-            </div>
-        </div>
+        <v-tabs-window v-model="tab">
+            <v-tabs-window-item v-for="tabPages in tabs" :key="tabPages">
+                <div class="chart-section">
+                    <h2>{{ tabPages }} tab</h2>
+                    <Timeline :chartData="chartData2" :chartOptions="chartOptions2" />
+                </div>
+            </v-tabs-window-item>
+        </v-tabs-window>
     </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue"
 import { useRouter } from "vue-router"
-import { Bar } from "vue-chartjs"
-import { Chart as ChartJS, CategoryScale, TimeScale, BarElement, Title, Tooltip, Legend, ChartOptions, TooltipItem } from "chart.js"
-import "chartjs-adapter-dayjs-4/dist/chartjs-adapter-dayjs-4.esm"
-import zoomPlugin from "chartjs-plugin-zoom"
-import dayjs from "dayjs"
-
-// Register Chart.js components
-ChartJS.register(CategoryScale, TimeScale, BarElement, Title, Tooltip, Legend, zoomPlugin)
+import Timeline from "@/components/Timeline.vue"
 
 const router = useRouter()
 const chartRef = ref()
-
-const positions = ["SA-TWR", "GG-TWR", "OS-1"]
-
+const tab = ref("Positions")
+const tabs = ["Positions", "Controllers"]
+const positions = ["SA-TWR", "GG-TWR", "OS-1", "MM-2", "SA-GND", "APP-E", "APP-W", "DEP-E", "DEP-W"]
 const chartData2 = {
     labels: positions,
     datasets: [

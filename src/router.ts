@@ -9,7 +9,7 @@ const routes = [
     },
     {
         path: "/ws",
-        name: "AdminPanel",
+        name: "ws",
         component: () => import("@/views/ws.vue"),
     },
 ]

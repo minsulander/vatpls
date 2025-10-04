@@ -28,3 +28,6 @@ test-result*.xml
 run API.bat
 API/build
 /build
+
+# euroscope ese
+*.ese

@@ -120,11 +120,11 @@ def main():
         )
         positions.append(position)
 
-    if not os.path.exists("../src/data"):
-        os.makedirs("../src/data")
-        print("Created directory ../src/data")
+    # if not os.path.exists("../src/data"):
+    #     os.makedirs("../src/data")
+    #     print("Created directory ../src/data")
 
-    file = open("../src/data/callsigns.txt", "w")
+    file = open("../src/assets/callsigns.txt", "w")
     count = 0
     for c in positions :
         if (c.position_name() is not None):
@@ -132,7 +132,7 @@ def main():
             count += 1
     file.close()
 
-    print("saved a total of", count, "positions to ../src/data/callsigns.txt")
+    print("saved a total of", count, "positions to ../src/assets/callsigns.txt")
 
 if __name__ == "__main__":
     main()

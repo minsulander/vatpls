@@ -14,159 +14,44 @@
         </div>
 
         <v-row class="d-flex flex-grow-1">
-            <!-- Left Column: Position (Active Controllers) -->
-            <v-col class="d-flex flex-column" style="height: 90vh">
-                <h2>Active</h2>
-                <VueDraggable
-                    class="d-flex flex-column gap-2 pa-4 flex-grow-1 bg-grey darken-3 overflow-auto"
-                    style="max-height: 100%"
-                    ref="activeContainer"
-                    v-model="activeControllers"
-                    :animation="100"
-                    ghostClass="ghost"
-                    group="tasks"
-                    :disabled="!authorized"
-                    @update="onUpdate"
-                    @add="onAddPosition"
-                    @remove="onRemove"
-                    @scroll="() => saveScrollPosition('active')"
-                >
-                    <div
-                        v-for="controller in activeControllers"
-                        :key="controller.cid"
-                        class="cursor-move white-bg lighten-5 mb-2 position-relative"
-                        :class="{ 'online-card': controller.position?.toLowerCase() === 'online' }"
-                        :style="getBorderColor(controller)"
-                        @dragstart="onDragStart(controller)"
-                    >
-                        <div class="controller-rating" :style="getBorderTextColor(controller)">{{ controller.rating }}</div>
-                        <v-card-text class="pa-1">
-                            <v-row no-gutters class="border-row">
-                                <v-col cols="6" class="border-cell no-border-left no-border-top">
-                                    {{ controller.name }} ({{ controller.cid }})
-                                </v-col>
-                                <v-col cols="4" class="border-cell no-border-top">
-                                    {{ controller.position }}
-                                </v-col>
-                                <v-col
-                                    cols="2"
-                                    class="border-cell no-border-right no-border-top"
-                                    :style="controller.timestamp ? getSessionBorder(controller.timestamp) : ' '"
-                                >
-                                    {{ formatTimeDifference(controller.timestamp) }}
-                                </v-col>
-                            </v-row>
+            <ControllerColumn
+                title="Active"
+                column-type="active"
+                :controllers="activeControllers"
+                :authorized="authorized"
+                container-ref="activeContainer"
+                @update="(controllers: Controller[]) => activeControllers = controllers"
+                @add="onAddPosition"
+                @remove="onRemove"
+                @drag-start="onDragStart"
+                @save-scroll-position="saveScrollPosition"
+            />
 
-                            <v-row no-gutters class="border-row">
-                                <v-col cols="6" class="border-cell no-border-left no-border-bottom">
-                                    {{ controller.endorsment === "NIL" ? " " : parseEndorsment(controller.endorsment, controller.rating) }}
-                                </v-col>
-                                <v-col cols="6" class="border-cell no-border-right no-border-bottom">
-                                    {{ controller.callsign.length > 0 ? controller.callsign : "&nbsp;" }} &nbsp;
-                                </v-col>
-                            </v-row>
-                        </v-card-text>
-                    </div>
-                </VueDraggable>
-            </v-col>
+            <ControllerColumn
+                title="Break"
+                column-type="break"
+                :controllers="controllerNames"
+                :authorized="authorized"
+                container-ref="breakContainer"
+                @update="(controllers: Controller[]) => controllerNames = controllers"
+                @add="onAddPause"
+                @remove="onRemove"
+                @drag-start="onDragStart"
+                @save-scroll-position="saveScrollPosition"
+            />
 
-            <!-- Middle Column: Paus (Available Controllers) -->
-            <v-col class="d-flex flex-column" style="height: 90vh">
-                <h2>Break</h2>
-                <VueDraggable
-                    class="d-flex flex-column gap-2 pa-4 flex-grow-1 bg-grey darken-3 overflow-auto"
-                    style="max-height: 100%"
-                    ref="breakContainer"
-                    v-model="controllerNames"
-                    :animation="100"
-                    ghostClass="ghost"
-                    group="tasks"
-                    :disabled="!authorized"
-                    @update="onUpdate"
-                    @add="onAddPause"
-                    @remove="onRemove"
-                    @scroll="() => saveScrollPosition('break')"
-                >
-                    <div
-                        v-for="controller in controllerNames"
-                        :key="controller.cid"
-                        :style="getBorderColor(controller)"
-                        class="cursor-move white-bg lighten-5 mb-2 position-relative"
-                        @dragstart="onDragStart(controller)"
-                    >
-                        <div class="controller-rating" :style="getBorderTextColor(controller)">{{ controller.rating }}</div>
-                        <v-card-text class="pa-1">
-                            <v-row no-gutters class="border-row">
-                                <v-col cols="6" class="border-cell no-border-left no-border-top">
-                                    {{ controller.name }} ({{ controller.cid }})
-                                </v-col>
-                                <v-col cols="4" class="border-cell no-border-top"> Paus </v-col>
-                                <v-col cols="2" class="border-cell no-border-right no-border-top">
-                                    {{ formatTimeDifference(controller.timestamp) }}
-                                </v-col>
-                            </v-row>
-
-                            <v-row no-gutters class="border-row">
-                                <v-col cols="6" class="border-cell no-border-left no-border-bottom">
-                                    {{ controller.endorsment === "NIL" ? " " : parseEndorsment(controller.endorsment, controller.rating) }}
-                                </v-col>
-                                <v-col cols="6" class="border-cell no-border-right no-border-bottom">&nbsp;</v-col>
-                            </v-row>
-                        </v-card-text>
-                    </div>
-                </VueDraggable>
-            </v-col>
-
-            <!-- Right Column: Övrig tid (Away Controllers) -->
-            <v-col class="d-flex flex-column" style="height: 90vh">
-                <h2>Other</h2>
-                <VueDraggable
-                    class="d-flex flex-column gap-2 pa-4 flex-grow-1 bg-grey darken-3 overflow-auto"
-                    style="max-height: 100%"
-                    ref="otherContainer"
-                    v-model="awayControllers"
-                    :animation="100"
-                    ghostClass="ghost"
-                    group="tasks"
-                    :disabled="!authorized"
-                    @update="onUpdate"
-                    @add="onAddAway"
-                    @remove="onRemove"
-                    @scroll="() => saveScrollPosition('other')"
-                >
-                    <div
-                        v-for="controller in awayControllers"
-                        :key="controller.cid"
-                        :style="getBorderColor(controller)"
-                        class="cursor-move white-bg lighten-5 mb-2 position-relative"
-                        @dragstart="onDragStart(controller)"
-                    >
-                        <div class="controller-rating" :style="getBorderTextColor(controller)">{{ controller.rating }}</div>
-                        <v-card-text class="pa-1">
-                            <v-row no-gutters class="border-row">
-                                <v-col cols="6" class="border-cell no-border-left no-border-top">
-                                    {{ controller.name }} ({{ controller.cid }})
-                                </v-col>
-                                <v-col cols="4" class="border-cell no-border-top">
-                                    {{ "&nbsp;" }}
-                                </v-col>
-                                <v-col cols="2" class="border-cell no-border-right no-border-top">
-                                    {{ formatTimeDifference(controller.timestamp) }}
-                                </v-col>
-                            </v-row>
-
-                            <v-row no-gutters class="border-row">
-                                <v-col cols="6" class="border-cell no-border-left no-border-bottom">
-                                    {{ controller.endorsment === "NIL" ? " " : parseEndorsment(controller.endorsment, controller.rating) }}
-                                </v-col>
-                                <v-col cols="6" class="border-cell no-border-right no-border-bottom">
-                                    {{ controller.callsign || "other" }} &nbsp
-                                </v-col>
-                            </v-row>
-                        </v-card-text>
-                    </div>
-                </VueDraggable>
-            </v-col>
+            <ControllerColumn
+                title="Other"
+                column-type="other"
+                :controllers="awayControllers"
+                :authorized="authorized"
+                container-ref="otherContainer"
+                @update="(controllers: Controller[]) => awayControllers = controllers"
+                @add="onAddAway"
+                @remove="onRemove"
+                @drag-start="onDragStart"
+                @save-scroll-position="saveScrollPosition"
+            />
         </v-row>
 
         <v-dialog v-model="showControllerDialog" max-width="500">
@@ -305,7 +190,12 @@
                             </template>
                         </v-list>
 
-                        <v-text-field v-model="selectedCallsign" label="Callsign (if not implied by position)" class="mt-4"></v-text-field>
+                        <!-- <v-text-field v-model="selectedCallsign" label="Callsign (if not implied by position)" class="mt-4"></v-text-field> -->
+                        <v-autocomplete
+                            label="Callsign (if not implied by position)"
+                            v-model="selectedCallsign"
+                            :items="CallsignsList"
+                        ></v-autocomplete>
                     </v-form>
                 </v-card-text>
                 <v-card-actions>
@@ -336,6 +226,7 @@ import { ref, onMounted, onUnmounted, computed, nextTick, watch, Ref, ComponentP
 import { VueDraggable } from "vue-draggable-plus"
 import dayjs from "dayjs"
 import duration from "dayjs/plugin/duration"
+import ControllerColumn from "@/components/ControllerColumn.vue"
 
 dayjs.extend(duration)
 
@@ -352,6 +243,11 @@ interface Controller {
     endorsment: string
     timestamp: string
 }
+
+// read in from data/callsigns.txt
+import callsigns from "@/assets/callsigns.txt?raw"
+
+const CallsignsList = computed(() => callsigns.split("\n").filter((line) => line.trim() !== ""))
 
 const ratings = ["S1", "S2", "S3", "C1"]
 const endorsments = ["NIL", "T2 APS", "T1 TWR", "T1 APP", "SOLO GG TWR", "SOLO GG APP"]
@@ -515,39 +411,6 @@ function isAuthorized() {
     } else {
         return false
     }
-}
-
-const parseEndorsment = (endorsementStr: string | string[], rating: string) => {
-    // Rating = {C1} => All endorsement, show none.
-    if (rating === "C1") return " "
-
-    // If something is given wrong or if the str is NULL (other words no rating, display NIL)
-    if (endorsementStr === "{NULL}" || endorsementStr == undefined) {
-        return " "
-    }
-    if (typeof endorsementStr != "string") {
-        return " "
-    }
-
-    // Match all valid endorsements
-    const validEndorsements = ["T2 APS", "T1 TWR", "T1 APP", "SOLO GG TWR", "SOLO GG APP"]
-    let strmatches = validEndorsements.filter((endorsement) => endorsementStr.match(endorsement)?.length === 1)
-
-    // Remove endorsements that are implied by the rating.
-    if (rating === "S3") {
-        if (strmatches.includes("T1 APP")) {
-            strmatches = strmatches.filter((val) => val === "T1 APP")
-        } else {
-            strmatches = strmatches.filter((val) => val === "T1 APP" || val === "T1 TWR")
-        }
-    }
-
-    const result = strmatches.join(", ")
-    if (result == null) {
-        return " "
-    }
-
-    return result
 }
 
 /**
@@ -753,25 +616,6 @@ function stopSession() {
 
     selectedControllerToRemove.value = ""
     showDeleteControllerDialog.value = false
-}
-
-function formatTimeDifference(timestamp: string) {
-    if (!timestamp) return "--:--:--"
-
-    const currentTime = new Date().getTime()
-    const startTime = new Date(timestamp).getTime() // Local time is automatically used here
-
-    const diffInSeconds = Math.floor((currentTime - startTime) / 1000)
-
-    if (diffInSeconds < 1) {
-        return "--:--:--"
-    }
-    const hours = String(Math.floor(diffInSeconds / 3600)).padStart(2, "0")
-    const minutes = String(Math.floor((diffInSeconds % 3600) / 60)).padStart(2, "0")
-    const seconds = String(diffInSeconds % 60).padStart(2, "0")
-
-    //return `${hours}:${minutes}:${seconds}`
-    return `${hours}:${minutes}`
 }
 
 // TODO: type this correctly? https://developer.mozilla.org/en-US/docs/Web/API/clearInterval#intervalid
@@ -1005,69 +849,6 @@ function sortControllerSessions() {
     )
 }
 
-const getSessionBorder = (sessionLength: string) => {
-    const totalMinutes = calculateSessionLength(sessionLength) / 60
-
-    //Session thresholds
-    const longSessionThreshold = 120
-    const mediumSessionThreshold = 90
-
-    // Background color
-    const longSessionColor = "#CC3300"
-    const mediumSessionColor = "#FFCC00"
-
-    // Text color
-    const longSessionTextColor = "black"
-    const mediumSessionTextColor = "black"
-
-    let bgColor, txtColor
-
-    if (longSessionThreshold < totalMinutes) {
-        bgColor = longSessionColor
-        txtColor = longSessionTextColor
-    } else if (mediumSessionThreshold < totalMinutes) {
-        bgColor = mediumSessionColor
-        txtColor = mediumSessionTextColor
-    }
-
-    // If these have not been assigned, style wont be changed.
-    if (!bgColor) return ""
-
-    return [
-        { background: bgColor },
-        { color: txtColor },
-        //{'font-weight': "bold"},
-    ]
-}
-
-function getBorderColor(ctrl: Controller) {
-    let ratingColor
-
-    switch (ctrl.rating) {
-        case "S1":
-            ratingColor = "green"
-            break
-        case "S2":
-            ratingColor = "blue"
-            break
-        case "S3":
-            ratingColor = "red"
-            break
-        case "C1":
-            ratingColor = "yellow"
-            break
-        default:
-            ratingColor = "grey"
-    }
-
-    return { "--v-border-color": ratingColor, borderLeft: "15px solid var(--v-border-color)" }
-}
-
-function getBorderTextColor(ctrl: Controller) {
-    if (ctrl.rating === "C1") return { color: "#000" }
-    return { color: "#FFF" }
-}
-
 function updatePositionSelection() {
     const inputLower = selectedPosition.value.toLowerCase()
     const matchingPosition = allPositions.value.find((pos) => pos.toLowerCase() === inputLower)
@@ -1134,63 +915,6 @@ const restoreScrollPosition = (bay: string) => {
 </script>
 
 <style scoped>
-.ghost {
-    opacity: 50%;
-}
-
-.bg-grey {
-    background-color: #aaa !important;
-}
-
-.white-bg {
-    background-color: #ececec;
-    color: #000;
-}
-
-.controller-rating {
-    position: absolute;
-    top: 40%;
-    left: 2px;
-    transform: rotate(-90deg);
-    transform-origin: left bottom;
-    white-space: nowrap;
-    font-size: 12px;
-    font-weight: bold;
-    color: #fff;
-    background-color: transparent;
-    padding-left: 5px;
-}
-
-.border-row {
-    margin: 0;
-}
-
-.border-cell {
-    border: 0.5px solid #bbbbbb;
-    text-align: center;
-    padding: 3px !important;
-}
-
-.no-border-left {
-    border-left: none;
-}
-
-.no-border-right {
-    border-right: none;
-}
-
-.no-border-bottom {
-    border-bottom: none;
-}
-
-.no-border-top {
-    border-top: none;
-}
-
-.v-card-text {
-    padding: 0 !important;
-}
-
 .position-dialog-card {
     display: flex;
     flex-direction: column;
@@ -1219,9 +943,5 @@ const restoreScrollPosition = (bay: string) => {
 .v-card-actions {
     padding-top: 16px;
     border-top: 1px solid rgba(0, 0, 0, 0.12);
-}
-
-.online-card {
-    background-color: #eff3cf;
 }
 </style>

@@ -1,33 +1,33 @@
 <template>
     <div class="ws-panel">
         <h1>WS Panel</h1>
-
         <v-tabs v-model="tab">
             <v-tab v-for="tabPages in tabs"> {{ tabPages }} </v-tab>
         </v-tabs>
-
         <v-tabs-window v-model="tab">
             <v-tabs-window-item v-for="tabPages in tabs" :key="tabPages">
                 <div class="chart-section">
                     <div class="d-flex justify-space-between align-center mb-4">
                         <h2>{{ tabPages }} tab</h2>
-                        <v-btn @click="fetchControllerHistory" color="primary">refresh</v-btn>
+                        <div class="d-flex">
+                            <p class="mr-3 mt-2">Last updated: {{ now.format("HH:mm:ss") }}</p>
+                            <v-btn @click="fetchControllerHistory" color="primary">refresh</v-btn>
+                        </div>
                     </div>
                     <Timeline :chartData="chartData2" :chartOptions="chartOptions2" />
                 </div>
-                {{ pos }}
-                {{ positions }}
-                {{ chartData2 }}
             </v-tabs-window-item>
         </v-tabs-window>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue"
+import { ref, computed, onMounted, onUnmounted } from "vue"
 import { useRouter } from "vue-router"
 import Timeline from "@/components/Timeline.vue"
 import dayjs from "dayjs"
+
+import type { Controller } from "@/views/pls.vue"
 
 interface historyController {
     session_id: number
@@ -43,6 +43,7 @@ const router = useRouter()
 const tab = ref("Positions")
 const tabs = ["Positions", "Controllers"]
 const controllerEntries = ref<historyController[]>([])
+const activeSessions = ref<Controller[]>()
 
 // get all available positions.
 // generate dataset
@@ -50,6 +51,8 @@ const controllerEntries = ref<historyController[]>([])
 // min, max date
 // time unit
 //
+
+const now = ref(dayjs())
 
 const pos = computed(() => {
     const positionsSet = new Set<string>()
@@ -68,7 +71,25 @@ function generateDatasetsFromSessions(sessions: historyController[]) {
             sessionsByUser.set(key, [])
         }
         sessionsByUser.get(key)!.push(session)
-        console.log("Processing session:", session)
+        // console.log("Processing session:", session)
+    })
+    // TODO LIVE UPDATE
+    activeSessions.value?.forEach((Activesession) => {
+        const key = Activesession.cid
+        if (!sessionsByUser.has(key)) {
+            sessionsByUser.set(key, [])
+        }
+        if (Activesession.callsign == undefined || Activesession.position == undefined) return
+        const session: historyController = {
+            session_id: 0,
+            cid: Activesession.cid,
+            callsign: Activesession.callsign,
+            position: Activesession.position,
+            session_start: dayjs(Activesession.timestamp).toDate(),
+            session_end: dayjs().toDate(),
+        }
+        sessionsByUser.get(key)!.push(session)
+        // console.log("Processing session:", session)
     })
 
     const datasets: any[] = []
@@ -81,6 +102,7 @@ function generateDatasetsFromSessions(sessions: historyController[]) {
                 sessionsByCallsign.set(session.callsign, [])
             }
             sessionsByCallsign.get(session.callsign)!.push(session)
+            // console.log("Processing session:", session)
         })
 
         // rando colors
@@ -108,8 +130,6 @@ function generateDatasetsFromSessions(sessions: historyController[]) {
     return datasets
 }
 
-const positions = ["SA-TWR", "GG-TWR", "OS-1", "MM-2", "SA-GND", "APP-E", "APP-W", "DEP-E", "DEP-W"]
-
 // Make chartData2 reactive based on controllerEntries
 const chartData2 = computed(() => {
     const datasets = generateDatasetsFromSessions(controllerEntries.value)
@@ -127,6 +147,9 @@ const chartOptions2 = computed(() => {
     const tomorrow = dayjs().add(1, "day")
 
     return {
+        animation: {
+            duration: 0,
+        },
         responsive: true,
         maintainAspectRatio: false,
         indexAxis: "y" as const,
@@ -162,10 +185,10 @@ const chartOptions2 = computed(() => {
                 annotations: {
                     line1: {
                         type: "line" as const,
-                        xMin: dayjs(Date.now()).toDate(),
-                        xMax: dayjs(Date.now()).toDate(),
+                        xMin: dayjs(Date.now()).toISOString(),
+                        xMax: dayjs(Date.now()).toISOString(),
                         borderColor: "rgb(255, 99, 132)",
-                        borderWidth: 3,
+                        borderWidth: 2,
                     },
                 },
             },
@@ -195,6 +218,7 @@ const chartOptions2 = computed(() => {
 })
 
 function fetchControllerHistory() {
+    now.value = dayjs()
     // fetch data from api
 
     fetch(`${apiBaseUrl}/api/history?day=${dayjs(Date.now()).format("YYYY-MM-DD")}`)
@@ -213,9 +237,31 @@ function fetchControllerHistory() {
         })
 }
 
+let unsubscribe: undefined | (() => void) = undefined
+function subscribe() {
+    const evtSource = new EventSource(`${apiBaseUrl}/subscribe`)
+    evtSource.onmessage = (ev) => {
+        now.value = dayjs()
+        activeSessions.value = JSON.parse(ev.data).activeControllers
+    }
+
+    return () => {
+        evtSource.close()
+    }
+}
+let timer = undefined
 onMounted(() => {
     fetchControllerHistory()
-    console.log("today: ", dayjs().format("YYYY-MM-DD"))
+    unsubscribe = subscribe()
+    console.log("today: ", dayjs().toDate())
+
+    timer = setInterval(() => {})
+})
+
+onUnmounted(() => {
+    if (unsubscribe) {
+        unsubscribe()
+    }
 })
 </script>
 

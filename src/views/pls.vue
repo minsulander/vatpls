@@ -232,7 +232,7 @@ dayjs.extend(duration)
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001"
 
-interface Controller {
+export interface Controller {
     name: string
     sign: string
     cid: string

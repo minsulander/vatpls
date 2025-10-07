@@ -158,6 +158,17 @@ const chartOptions2 = computed(() => {
                     },
                 },
             },
+            annotation: {
+                annotations: {
+                    line1: {
+                        type: "line" as const,
+                        xMin: dayjs(Date.now()).toDate(),
+                        xMax: dayjs(Date.now()).toDate(),
+                        borderColor: "rgb(255, 99, 132)",
+                        borderWidth: 3,
+                    },
+                },
+            },
         },
         scales: {
             y: {

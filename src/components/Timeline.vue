@@ -9,10 +9,11 @@ import { Bar } from "vue-chartjs"
 import { Chart as ChartJS, CategoryScale, TimeScale, BarElement, Title, Tooltip, Legend, ChartOptions, TooltipItem } from "chart.js"
 import "chartjs-adapter-dayjs-4/dist/chartjs-adapter-dayjs-4.esm"
 import zoomPlugin from "chartjs-plugin-zoom"
+import Annotation from "chartjs-plugin-annotation"
 import dayjs from "dayjs"
 
 // Register Chart.js components
-ChartJS.register(CategoryScale, TimeScale, BarElement, Title, Tooltip, Legend, zoomPlugin)
+ChartJS.register(CategoryScale, TimeScale, BarElement, Title, Tooltip, Legend, zoomPlugin, Annotation)
 
 const props = defineProps<{
     chartData: any

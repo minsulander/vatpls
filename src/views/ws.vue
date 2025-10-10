@@ -26,6 +26,11 @@ import { ref, computed, onMounted, onUnmounted } from "vue"
 import { useRouter } from "vue-router"
 import Timeline from "@/components/Timeline.vue"
 import dayjs from "dayjs"
+import utc from "dayjs/plugin/utc"
+import timezone from "dayjs/plugin/timezone"
+
+dayjs.extend(utc)
+dayjs.extend(timezone)
 
 import type { Controller } from "@/views/pls.vue"
 
@@ -85,7 +90,7 @@ function generateDatasetsFromSessions(sessions: historyController[]) {
             cid: Activesession.cid,
             callsign: Activesession.callsign,
             position: Activesession.position,
-            session_start: dayjs(Activesession.timestamp).toDate(),
+            session_start: dayjs.utc(Activesession.timestamp).local().toDate(),
             session_end: dayjs().toDate(),
         }
         sessionsByUser.get(key)!.push(session)
@@ -253,7 +258,9 @@ let timer = undefined
 onMounted(() => {
     fetchControllerHistory()
     unsubscribe = subscribe()
-    console.log("today: ", dayjs().toDate())
+    console.log("today (local): ", dayjs().toDate())
+    console.log("today (UTC): ", dayjs.utc().toDate())
+    console.log("dayjs timezone support:", typeof dayjs.utc, typeof dayjs.tz)
 
     timer = setInterval(() => {})
 })

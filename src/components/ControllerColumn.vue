@@ -60,8 +60,12 @@ import { ref, computed, ComponentPublicInstance } from "vue"
 import { VueDraggable } from "vue-draggable-plus"
 import dayjs from "dayjs"
 import duration from "dayjs/plugin/duration"
+import utc from "dayjs/plugin/utc"
+import timezone from "dayjs/plugin/timezone"
 
 dayjs.extend(duration)
+dayjs.extend(utc)
+dayjs.extend(timezone)
 
 interface Controller {
     name: string
@@ -148,16 +152,20 @@ const getCallsignDisplay = (controller: Controller) => {
 const formatTimeDifference = (timestamp: string) => {
     if (!timestamp) return "--:--:--"
 
-    const currentTime = new Date().getTime()
-    const startTime = new Date(timestamp).getTime()
+    const now = dayjs.utc()
+    const startTime = dayjs.utc(timestamp)
 
-    const diffInSeconds = Math.floor((currentTime - startTime) / 1000)
+    // console.log("now", now.format())
+    // console.log("startTime", startTime.format())
 
-    if (diffInSeconds < 1) {
+    const duration = dayjs.duration(now.diff(startTime))
+
+    if (duration.asSeconds() < 1) {
         return "--:--:--"
     }
-    const hours = String(Math.floor(diffInSeconds / 3600)).padStart(2, "0")
-    const minutes = String(Math.floor((diffInSeconds % 3600) / 60)).padStart(2, "0")
+
+    const hours = String(Math.floor(duration.asHours())).padStart(2, "0")
+    const minutes = String(duration.minutes()).padStart(2, "0")
 
     return `${hours}:${minutes}`
 }

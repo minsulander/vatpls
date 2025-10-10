@@ -226,9 +226,13 @@ import { ref, onMounted, onUnmounted, computed, nextTick, watch, Ref, ComponentP
 import { VueDraggable } from "vue-draggable-plus"
 import dayjs from "dayjs"
 import duration from "dayjs/plugin/duration"
+import utc from "dayjs/plugin/utc"
+import timezone from "dayjs/plugin/timezone"
 import ControllerColumn from "@/components/ControllerColumn.vue"
 
 dayjs.extend(duration)
+dayjs.extend(utc)
+dayjs.extend(timezone)
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001"
 
@@ -354,7 +358,7 @@ const newController = ref({
     frequency: "",
     rating: "",
     endorsment: "",
-    timestamp: new Date().toISOString(),
+    timestamp: dayjs().utc().format(),
 })
 
 const positionList = ref(null as any)
@@ -529,7 +533,7 @@ function addNewController() {
             ...newController.value,
             endorsment: tempEndorsment.value.join(", "),
             sign: newController.value.sign.toUpperCase(),
-            timestamp: new Date().toISOString(),
+            timestamp: dayjs.utc().format(),
         }
         controllerNames.value.push(newCreatedController)
 
@@ -542,7 +546,7 @@ function addNewController() {
             frequency: "",
             rating: "",
             endorsment: "",
-            timestamp: new Date().toISOString(),
+            timestamp: dayjs.utc().format(),
         }
         tempEndorsment.value.length = 0
 
@@ -559,7 +563,7 @@ function startSession() {
             ...foundController.value!,
             position: "pause",
             callsign: "pause",
-            timestamp: new Date().toISOString(),
+            timestamp: dayjs.utc().format(),
         })
 
         foundController.value!.position = "pause"
@@ -578,7 +582,7 @@ function startSession() {
             frequency: "",
             rating: "",
             endorsment: "",
-            timestamp: new Date().toISOString(),
+            timestamp: dayjs.utc().format(),
         }
     }
 
@@ -609,7 +613,7 @@ function stopSession() {
         frequency: "",
         rating: "",
         endorsment: "",
-        timestamp: new Date().toISOString(),
+        timestamp: dayjs.utc().format(),
     }
 
     foundController.value = null
@@ -740,7 +744,8 @@ function confirmPosition() {
         if (controller) {
             controller.position = selectedPosition.value
             controller.callsign = selectedCallsign.value
-            controller.timestamp = new Date().toISOString()
+            controller.timestamp = dayjs.utc().format()
+            console.log("confirmPosition", controller)
             saveControllers(controller)
         }
 
@@ -760,12 +765,12 @@ function onAddPause() {
 }
 
 function confirmPause() {
-    console.log("confirmPause")
+    console.log("confirmPause", dayjs.utc().format())
     if (selectedController.value) {
         const controller = controllerNames.value.find((controller) => controller.cid === selectedController.value?.cid)
         if (controller) {
             controller.position = "pause"
-            controller.timestamp = new Date().toISOString()
+            controller.timestamp = dayjs.utc().format()
             saveControllers(controller)
         }
 
@@ -786,7 +791,7 @@ function confirmAway() {
         if (controller) {
             controller.position = "other"
             controller.callsign = freeTextPositon.value
-            controller.timestamp = new Date().toISOString()
+            controller.timestamp = dayjs.utc().format()
             saveControllers(controller)
         }
 
@@ -832,8 +837,9 @@ function onUpdate() {
 }
 
 function calculateSessionLength(timestamp: string) {
-    const now = dayjs()
-    const start = dayjs(timestamp)
+    console.log(dayjs(timestamp).toDate())
+    const now = dayjs.utc()
+    const start = dayjs.utc(timestamp)
     return dayjs.duration(now.diff(start)).asSeconds()
 }
 

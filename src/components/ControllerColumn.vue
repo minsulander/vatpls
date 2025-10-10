@@ -154,10 +154,6 @@ const formatTimeDifference = (timestamp: string) => {
 
     const now = dayjs.utc()
     const startTime = dayjs.utc(timestamp)
-
-    // console.log("now", now.format())
-    // console.log("startTime", startTime.format())
-
     const duration = dayjs.duration(now.diff(startTime))
 
     if (duration.asSeconds() < 1) {

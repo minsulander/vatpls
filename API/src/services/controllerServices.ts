@@ -22,8 +22,6 @@ export async function activeControllersService(): Promise<{ Controllers: Control
             if (ctrl.in_list == "PAUSE" || ctrl.in_list == "OTHER") {
                 ctrl.position = ctrl.in_list
             }
-            console.log("Raw DB timestamp:", ctrl.timestamp)
-            console.log("Parsed as UTC:", dayjs.utc(ctrl.timestamp).format())
 
             return {
                 name: ctrl.name,

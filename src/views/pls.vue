@@ -493,7 +493,6 @@ async function saveControllers(movedController: Controller) {
 }
 
 const addControllerToDB = async (newcontroller: Controller) => {
-    console.log(newcontroller)
     try {
         await fetch(`${apiBaseUrl}/api/controller/new`, {
             method: "POST",
@@ -745,7 +744,6 @@ function confirmPosition() {
             controller.position = selectedPosition.value
             controller.callsign = selectedCallsign.value
             controller.timestamp = dayjs.utc().format()
-            console.log("confirmPosition", controller)
             saveControllers(controller)
         }
 
@@ -765,7 +763,6 @@ function onAddPause() {
 }
 
 function confirmPause() {
-    console.log("confirmPause", dayjs.utc().format())
     if (selectedController.value) {
         const controller = controllerNames.value.find((controller) => controller.cid === selectedController.value?.cid)
         if (controller) {
@@ -837,7 +834,6 @@ function onUpdate() {
 }
 
 function calculateSessionLength(timestamp: string) {
-    console.log(dayjs(timestamp).toDate())
     const now = dayjs.utc()
     const start = dayjs.utc(timestamp)
     return dayjs.duration(now.diff(start)).asSeconds()

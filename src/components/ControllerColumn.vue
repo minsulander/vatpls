@@ -196,8 +196,8 @@ const parseEndorsment = (endorsementStr: string | string[], rating: string) => {
 }
 
 const calculateSessionLength = (timestamp: string) => {
-    const now = dayjs()
-    const start = dayjs(timestamp)
+    const now = dayjs.utc()
+    const start = dayjs.utc(timestamp)
     return dayjs.duration(now.diff(start)).asSeconds()
 }
 

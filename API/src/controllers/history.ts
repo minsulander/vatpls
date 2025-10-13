@@ -18,12 +18,27 @@ export async function getHistory(req: Request, res: Response) {
 
         const result = await query_database(
             `
-                SELECT * FROM session WHERE session_start::date = $1::date OR session_end::date = $1::date;
+                SELECT 
+                    session_id,
+                    cid,
+                    position,
+                    callsign,
+                    session_start AT TIME ZONE 'UTC' as session_start,
+                    session_end AT TIME ZONE 'UTC' as session_end
+                FROM session 
+                WHERE session_start::date = $1::date OR session_end::date = $1::date;
             `,
             [day]
         )
 
-        return res.status(200).json({ sessions: result.rows, length: result.rowCount })
+        // Force UTC formatting to prevent timezone issues
+        const sessions = result.rows.map((row) => ({
+            ...row,
+            session_start: new Date(row.session_start).toISOString(),
+            session_end: new Date(row.session_end).toISOString(),
+        }))
+
+        return res.status(200).json({ sessions, length: result.rowCount })
     } catch (error: any) {
         return res.status(500).json({ error: error.message })
     }

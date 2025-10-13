@@ -78,6 +78,35 @@ app.get("/subscribe", async (req, res) => {
     }
 })
 
+app.get("/subscribe-long", async (req, res) => {
+    res.set({
+        "Cache-Control": "no-cache",
+        "Content-Type": "text/event-stream",
+        Connection: "keep-alive",
+    })
+
+    let connection = "open"
+    console.log("Long client connected.")
+    req.on("close", () => {
+        console.log("Long client disconnect.")
+        connection = "closed"
+        res.end()
+    })
+
+    res.write("retry: 10000\n\n")
+
+    while (true) {
+        await new Promise((resolve) => setTimeout(resolve, 10000))
+
+        const ctrlData = sortControllers(await activeControllersService())
+        if (ctrlData) {
+            res.write(`data: ${JSON.stringify(ctrlData)}\n\n`)
+        }
+
+        if (connection == "closed") break
+    }
+})
+
 // Start the server
 app.listen(port, async () => {
     console.log(`Server is running on http://localhost:${port}`)

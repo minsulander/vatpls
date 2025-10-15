@@ -16,6 +16,19 @@
                     </div>
                     <Timeline :chartData="chartData2" :chartOptions="chartOptions2" />
                 </div>
+                <div class="mx-4">
+                    <v-range-slider :min="0" :max="24" :step="1" strict v-model="range"></v-range-slider>
+                </div>
+                <div class="ml-2" v-if="tab === 2">
+                    <h2>Filter</h2>
+                    <v-checkbox-btn
+                        density="compact"
+                        v-model="selectedCallsigns"
+                        v-for="position in callsigns"
+                        :value="position"
+                        :label="position"
+                    ></v-checkbox-btn>
+                </div>
             </v-tabs-window-item>
         </v-tabs-window>
     </div>
@@ -39,16 +52,27 @@ interface historyController {
     session_start: number //ms
 }
 
+interface smallController {
+    cid: string
+    name: string
+    sign: string
+    rating: string
+}
+
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001"
 const router = useRouter()
+document.title = "WS PANEL"
 
 const tab = ref(0)
-const tabs = ["Positions", "Controllers"]
+const tabs = ["Positions", "Controllers", "Callsign"]
 const controllerEntries = ref<historyController[]>([])
 const activeSessions = ref<Controller[]>()
 const LatestUpdatedUTC = ref(dayjs.utc())
+const selectedCallsigns = ref<string[]>([])
+const savedControllers = ref<smallController[]>([])
+const range = ref([0, 24])
 
-const positions = computed(() => {
+const callsigns = computed(() => {
     const positionsSet = new Set<string>()
     controllerEntries.value.forEach((entry) => {
         positionsSet.add(entry.callsign)
@@ -57,7 +81,21 @@ const positions = computed(() => {
         if (entry.callsign == undefined || entry.position == undefined) return
         positionsSet.add(entry.callsign)
     })
-    return Array.from(positionsSet)
+    // selectedPositions.value = Array.from(positionsSet)
+    console.log(positionsSet)
+    return Array.from(positionsSet).sort()
+})
+
+const positions = computed(() => {
+    const callsignSet = new Set<string>()
+    controllerEntries.value.forEach((entry) => {
+        callsignSet.add(entry.position)
+    })
+    activeSessions.value?.forEach((entry) => {
+        if (entry.callsign == undefined || entry.position == undefined) return
+        callsignSet.add(entry.position)
+    })
+    return Array.from(callsignSet).sort()
 })
 
 const controllers = computed(() => {
@@ -73,21 +111,20 @@ const controllers = computed(() => {
     return Array.from(controllersSet)
 })
 
-// use same colors for same positon
-// TODO have some kind of logic to color similar positions with each other..
-const positionColors: { [key: string]: string } = {}
+// Use consistent colors for each controller (CID) across all tabs
+const controllerColors: { [key: string]: string } = {}
 const availableColors = ["#ff6b6b", "#4ecdc4", "#45b7d1", "#96ceb4", "#ffeaa7", "#dda0dd", "#98d8c8", "#f39c12", "#e74c3c", "#9b59b6"]
 
-function getPositionColor(position: string): string {
-    if (!positionColors[position]) {
-        const colorIndex = Object.keys(positionColors).length % availableColors.length
-        positionColors[position] = availableColors[colorIndex]
+function getControllerColor(cid: string): string {
+    if (!controllerColors[cid]) {
+        const colorIndex = Object.keys(controllerColors).length % availableColors.length
+        controllerColors[cid] = availableColors[colorIndex]
     }
-    return positionColors[position]
+    return controllerColors[cid]
 }
 
 // datasets from sessions - POSITIONS VIEW
-function generatePositionsDatasets(sessions: historyController[]) {
+function generatePositionsDatasets(sessions: historyController[], usePositions: boolean) {
     const sessionsByUser = new Map<string, historyController[]>()
 
     sessions.forEach((session) => {
@@ -127,19 +164,38 @@ function generatePositionsDatasets(sessions: historyController[]) {
 
         // Create one dataset per session
         userSessions.forEach((session) => {
-            const data = positions.value.map((callsign) => {
-                if (callsign === session.callsign) {
-                    const startTime =
-                        typeof session.session_start === "number" ? session.session_start : dayjs.utc(session.session_start).valueOf()
-                    const endTime = typeof session.session_end === "number" ? session.session_end : dayjs.utc(session.session_end).valueOf()
-                    return [startTime, endTime]
-                }
-                return null
-            })
+            let data: any[]
+
+            if (usePositions) {
+                // Positions view - map against positions
+                data = positions.value.map((position) => {
+                    if (position === session.position) {
+                        const startTime =
+                            typeof session.session_start === "number" ? session.session_start : dayjs.utc(session.session_start).valueOf()
+                        const endTime =
+                            typeof session.session_end === "number" ? session.session_end : dayjs.utc(session.session_end).valueOf()
+                        return [startTime, endTime]
+                    }
+                    return null
+                })
+            } else {
+                // Callsigns view - map against callsigns
+                data = callsigns.value.map((callsign) => {
+                    if (callsign === session.callsign) {
+                        const startTime =
+                            typeof session.session_start === "number" ? session.session_start : dayjs.utc(session.session_start).valueOf()
+                        const endTime =
+                            typeof session.session_end === "number" ? session.session_end : dayjs.utc(session.session_end).valueOf()
+                        return [startTime, endTime]
+                    }
+                    return null
+                })
+            }
+
             datasets.push({
                 label: `${userKey}`,
                 data: data,
-                backgroundColor: getPositionColor(session.callsign),
+                backgroundColor: getControllerColor(userKey), // Use controller CID for consistent coloring
             })
         })
     })
@@ -205,7 +261,7 @@ function generateControllersDatasets(sessions: historyController[]) {
                 datasets.push({
                     label: `${position}`, // Position name as label
                     data: data,
-                    backgroundColor: getPositionColor(position), // Consistent position colors
+                    backgroundColor: getControllerColor(userKey), // Use controller CID for consistent coloring
                 })
             })
         })
@@ -216,18 +272,25 @@ function generateControllersDatasets(sessions: historyController[]) {
 
 // chartjs data format
 const chartData2 = computed(() => {
-    // Position y-axis
-    if (tab.value === 1) {
+    if (tab.value === 0) {
+        // Positions tab - positions on Y-axis, controllers as bars
+        const datasets = generatePositionsDatasets(controllerEntries.value, true)
+        return {
+            labels: positions.value,
+            datasets: datasets,
+        }
+    } else if (tab.value === 1) {
+        // Controllers tab - controllers on Y-axis, positions as bars
         const datasets = generateControllersDatasets(controllerEntries.value)
         return {
             labels: controllers.value,
             datasets: datasets,
         }
     } else {
-        // controller y-axis
-        const datasets = generatePositionsDatasets(controllerEntries.value)
+        // Callsigns tab (tab 2) - callsigns on Y-axis
+        const datasets = generatePositionsDatasets(controllerEntries.value, false)
         return {
-            labels: positions.value,
+            labels: callsigns.value, // Use callsigns computed property instead of empty selectedCallsigns
             datasets: datasets,
         }
     }
@@ -235,8 +298,9 @@ const chartData2 = computed(() => {
 
 // OPTIONS
 const chartOptions2 = computed(() => {
-    const today = dayjs.utc().startOf("day").valueOf()
-    const tomorrow = dayjs.utc().add(1, "day").startOf("day").valueOf()
+    const minTime = dayjs.utc().startOf("day").add(range.value[0], "hour").valueOf()
+    const maxTime = dayjs.utc().startOf("day").add(range.value[1], "hour").valueOf()
+
     return {
         animation: {
             duration: 0,
@@ -250,7 +314,6 @@ const chartOptions2 = computed(() => {
             },
             title: {
                 display: false,
-                text: tab.value === 1 ? "Controllers Timeline" : "Positions Timeline",
             },
             tooltip: {
                 callbacks: {
@@ -261,20 +324,13 @@ const chartOptions2 = computed(() => {
                     label: function (context: any) {
                         const datasetLabel = context.dataset.label
                         const data = context.raw
-
                         if (Array.isArray(data) && data.length === 2) {
                             const startTime = dayjs.utc(data[0]).format("HH:mm")
                             const endTime = dayjs.utc(data[1]).format("HH:mm")
-
-                            if (tab.value === 1) {
-                                // Controllers tab
-                                return `Position ${datasetLabel}: ${startTime} - ${endTime}z`
-                            } else {
-                                // Positions tab
-                                return `Controller ${datasetLabel}: ${startTime} - ${endTime}z`
-                            }
+                            return tab.value == 1
+                                ? `${tooltipInformation(context.label)}: ${startTime} - ${endTime}z`
+                                : `${tooltipInformation(datasetLabel)}: ${startTime} - ${endTime}z`
                         }
-
                         return `${datasetLabel}: No data`
                     },
                 },
@@ -297,10 +353,11 @@ const chartOptions2 = computed(() => {
             },
             x: {
                 type: "linear" as const,
-                min: today.valueOf(),
-                max: tomorrow.valueOf(),
+                min: minTime,
+                max: maxTime,
                 ticks: {
-                    stepSize: 1000 * 60 * 60,
+                    stepSize: 1000 * 60 * 60, // 1 hour steps
+                    maxTicksLimit: Math.max(6, range.value[1] - range.value[0] + 1), // Dynamic based on range
                     callback: function (value: any) {
                         return dayjs.utc(value).format("HH:mm")
                     },
@@ -310,9 +367,39 @@ const chartOptions2 = computed(() => {
     } as any
 })
 
+function tooltipInformation(label: string): string {
+    if (!Array.isArray(savedControllers.value)) {
+        return `Position ${label}`
+    }
+
+    if (tab.value === 1) {
+    }
+
+    const controller = savedControllers.value.find((c) => c.cid === label)
+    if (controller) {
+        return `[${controller.rating}] ${controller.name}`
+    } else {
+        return `Position ${label}`
+    }
+}
+
 /**
  * Data fetching and subscripting logic
  */
+async function fetchControllerInfo() {
+    try {
+        const response = await fetch(`${apiBaseUrl}/api/controller/saved`)
+        const data = await response.json()
+        // Ensure data is an array
+        console.log(data)
+        savedControllers.value = Array.isArray(data.Controllers) ? data.Controllers : []
+        console.log("Saved controllers:", savedControllers.value)
+    } catch (err) {
+        console.error("Error fetching controller info:", err)
+        savedControllers.value = [] // Fallback to empty array
+    }
+}
+
 function fetchControllerHistory() {
     LatestUpdatedUTC.value = dayjs.utc()
     fetch(`${apiBaseUrl}/api/history?day=${dayjs.utc().format("YYYY-MM-DD")}`)
@@ -365,6 +452,7 @@ const refresh = async () => {
 onMounted(async () => {
     LatestUpdatedUTC.value = dayjs.utc()
     fetchControllerHistory()
+    fetchControllerInfo()
     unsubscribe = subscribe()
     try {
         const response = await fetch(`${apiBaseUrl}/api/controllers`)

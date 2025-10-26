@@ -14,7 +14,7 @@
                             <v-btn @click="refresh" color="primary">refresh</v-btn>
                         </div>
                     </div>
-                    <Timeline :chartData="chartData2" :chartOptions="chartOptions2" />
+                    <Timeline :chartData="chartData2" :chartOptions="chartOptions" />
                 </div>
                 <div class="mx-4">
                     <v-range-slider :min="0" :max="24" :step="1" strict v-model="range"></v-range-slider>
@@ -127,6 +127,7 @@ function getControllerColor(cid: string): string {
 function generatePositionsDatasets(sessions: historyController[], usePositions: boolean) {
     const sessionsByUser = new Map<string, historyController[]>()
 
+    // för varje session hämta cid, cid representerar en nyckel som mappar till sessioner.
     sessions.forEach((session) => {
         const key = session.cid
         if (!sessionsByUser.has(key)) {
@@ -135,24 +136,28 @@ function generatePositionsDatasets(sessions: historyController[], usePositions: 
         sessionsByUser.get(key)!.push(session)
     })
 
+    // samma sak fast för aktiva, de ligger bökigt nog under två olika variabler.
     activeSessions.value?.forEach((Activesession) => {
         const key = Activesession.cid
         if (!sessionsByUser.has(key)) {
             sessionsByUser.set(key, [])
         }
+        // ta bort skräp
         if (Activesession.callsign == undefined || Activesession.position == undefined) return
         const session: historyController = {
             session_id: 0,
             cid: Activesession.cid,
             callsign: Activesession.callsign,
             position: Activesession.position,
-            session_start: dayjs.utc(Activesession.timestamp).valueOf(),
-            session_end: dayjs.utc().valueOf(),
+            session_start: dayjs.utc(Activesession.timestamp).valueOf(), // ms
+            session_end: dayjs.utc().valueOf(), // ms
         }
         sessionsByUser.get(key)!.push(session)
     })
 
     const datasets: any[] = []
+    // för varje cid och den personens sessions
+    // sortera enligt callsign
     sessionsByUser.forEach((userSessions, userKey) => {
         const sessionsByCallsign = new Map<string, historyController[]>()
         userSessions.forEach((session) => {
@@ -297,7 +302,7 @@ const chartData2 = computed(() => {
 })
 
 // OPTIONS
-const chartOptions2 = computed(() => {
+const chartOptions = computed(() => {
     const minTime = dayjs.utc().startOf("day").add(range.value[0], "hour").valueOf()
     const maxTime = dayjs.utc().startOf("day").add(range.value[1], "hour").valueOf()
 
@@ -309,6 +314,23 @@ const chartOptions2 = computed(() => {
         maintainAspectRatio: false,
         indexAxis: "y" as const,
         plugins: {
+            datalabels: {
+                formatter: function (value: any, context: any) {
+                    if (Array.isArray(value) && value.length === 2) {
+                        // TODO hide label on very small bars
+                        return `${context.chart.data.labels[context.dataIndex]}`
+                    }
+                    return ""
+                },
+                color: "black",
+                font: {
+                    size: 8,
+                    weight: "bold",
+                },
+                labels: {
+                    title: {},
+                },
+            },
             legend: {
                 display: false,
             },

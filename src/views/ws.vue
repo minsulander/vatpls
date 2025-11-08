@@ -5,6 +5,7 @@
             <div class="d-flex-end mt-2">
                 <v-btn color="#5865f2" @click="openAddControllerDialog">Add Controller</v-btn>
                 <v-btn class="ml-2" @click="openEditControllerDialog">Edit Controller</v-btn>
+                <v-btn class="ml-2">VATDASH</v-btn>
             </div>
         </div>
         <v-tabs v-model="tab">

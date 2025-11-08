@@ -1,62 +1,86 @@
 <template>
     <v-col class="d-flex flex-column" style="height: 90vh">
         <h2>{{ title }}</h2>
-        <VueDraggable
+        <div
             class="d-flex flex-column gap-2 pa-4 flex-grow-1 bg-grey darken-3 overflow-auto"
             style="max-height: 100%"
             :ref="containerRef"
-            v-model="controllers"
-            :animation="100"
-            ghostClass="ghost"
-            group="tasks"
-            :disabled="!authorized"
-            @update="onUpdate"
-            @add="onAdd"
-            @remove="onRemove"
             @scroll="() => saveScrollPosition(columnType)"
         >
-            <div
-                v-for="controller in controllers"
-                :key="controller.cid"
-                class="cursor-move white-bg lighten-5 mb-2 position-relative"
-                :class="{ 'online-card': controller.position?.toLowerCase() === 'online' }"
-                :style="getBorderColor(controller)"
-                @dragstart="onDragStart(controller)"
-            >
-                <div class="controller-rating" :style="getBorderTextColor(controller)">{{ controller.rating }}</div>
-                <v-card-text class="pa-1">
-                    <v-row no-gutters class="border-row">
-                        <v-col cols="6" class="border-cell no-border-left no-border-top">
-                            {{ controller.name }} ({{ controller.cid }})
-                        </v-col>
-                        <v-col cols="4" class="border-cell no-border-top">
-                            {{ getPositionDisplay(controller) }}
-                        </v-col>
-                        <v-col
-                            cols="2"
-                            class="border-cell no-border-right no-border-top"
-                            :style="controller.timestamp ? getSessionBorder(controller.timestamp) : ' '"
-                        >
-                            {{ formatTimeDifference(controller.timestamp) }}
-                        </v-col>
-                    </v-row>
-
-                    <v-row no-gutters class="border-row">
-                        <v-col cols="6" class="border-cell no-border-left no-border-bottom">
-                            {{ controller.endorsment === "NIL" ? " " : parseEndorsment(controller.endorsment, controller.rating) }}
-                        </v-col>
-                        <v-col cols="6" class="border-cell no-border-right no-border-bottom">
-                            {{ getCallsignDisplay(controller) || " " }}
-                        </v-col>
-                    </v-row>
+            <!-- Notepad Card - Only for "Other" column -->
+            <div v-if="columnType === 'other'" class="notepad-card white-bg mb-2">
+                <v-card-text class="pa-2">
+                    <v-textarea
+                        v-model="notepadContent"
+                        placeholder="Notes..."
+                        variant="outlined"
+                        density="compact"
+                        rows="4"
+                        hide-details
+                        auto-grow
+                        @blur="saveNotepad"
+                    ></v-textarea>
                 </v-card-text>
             </div>
-        </VueDraggable>
+
+            <!-- Draggable Controllers -->
+            <VueDraggable
+                class="d-flex flex-column gap-2"
+                v-model="controllers"
+                :animation="100"
+                ghostClass="ghost"
+                group="tasks"
+                :disabled="!authorized"
+                @update="onUpdate"
+                @add="onAdd"
+                @remove="onRemove"
+            >
+                <div
+                    v-for="controller in controllers"
+                    :key="controller.cid"
+                    class="cursor-move white-bg lighten-5 mb-2 position-relative"
+                    :class="{
+                        'online-card': controller.position?.toLowerCase() === 'online',
+                        'ws-card': controller.callsign?.toLowerCase().startsWith('ws'),
+                    }"
+                    :style="getBorderColor(controller)"
+                    @dragstart="onDragStart(controller)"
+                >
+                    <div class="controller-rating" :style="getBorderTextColor(controller)">{{ controller.rating }}</div>
+                    <v-card-text class="pa-1">
+                        <v-row no-gutters class="border-row">
+                            <v-col cols="6" class="border-cell no-border-left no-border-top">
+                                {{ controller.name }} ({{ controller.cid }})
+                            </v-col>
+                            <v-col cols="4" class="border-cell no-border-top">
+                                {{ getPositionDisplay(controller) }}
+                            </v-col>
+                            <v-col
+                                cols="2"
+                                class="border-cell no-border-right no-border-top"
+                                :style="controller.timestamp ? getSessionBorder(controller.timestamp) : ' '"
+                            >
+                                {{ formatTimeDifference(controller.timestamp) }}
+                            </v-col>
+                        </v-row>
+
+                        <v-row no-gutters class="border-row">
+                            <v-col cols="6" class="border-cell no-border-left no-border-bottom">
+                                {{ controller.endorsment === "NIL" ? " " : parseEndorsment(controller.endorsment, controller.rating) }}
+                            </v-col>
+                            <v-col cols="6" class="border-cell no-border-right no-border-bottom">
+                                {{ getCallsignDisplay(controller) || " " }}
+                            </v-col>
+                        </v-row>
+                    </v-card-text>
+                </div>
+            </VueDraggable>
+        </div>
     </v-col>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, ComponentPublicInstance } from "vue"
+import { ref, computed, onMounted } from "vue"
 import { VueDraggable } from "vue-draggable-plus"
 import dayjs from "dayjs"
 import duration from "dayjs/plugin/duration"
@@ -102,6 +126,23 @@ const controllers = computed({
     get: () => props.controllers,
     set: (value) => emit("update", value),
 })
+
+// Notepad functionality
+const notepadContent = ref("")
+const notepadStorageKey = "otherColumnNotepad"
+
+onMounted(() => {
+    // Load notepad content from localStorage
+    const savedContent = localStorage.getItem(notepadStorageKey)
+    if (savedContent) {
+        notepadContent.value = savedContent
+    }
+})
+
+const saveNotepad = () => {
+    // Save notepad content to localStorage
+    localStorage.setItem(notepadStorageKey, notepadContent.value)
+}
 
 const onUpdate = () => {
     emit("update", controllers.value)
@@ -319,5 +360,22 @@ const getBorderTextColor = (ctrl: Controller) => {
 
 .online-card {
     background-color: #eff3cf;
+}
+
+.ws-card {
+    background-color: #dce6f5;
+}
+
+.notepad-card {
+    background-color: #dce6f5;
+    min-height: 100px;
+}
+
+.notepad-card :deep(.v-textarea) {
+    font-size: 14px;
+}
+
+.notepad-card :deep(.v-field) {
+    background-color: transparent;
 }
 </style>

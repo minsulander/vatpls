@@ -11,6 +11,7 @@ import { activeControllersService } from "./services/controllerServices"
 import { sortControllers } from "./controllers/controller"
 
 import { query_database } from "./db/database"
+import { runMigrations } from "./db/migrate"
 import authRouter from "./routes/auth"
 import historyRoute from "./routes/history"
 import blockedTimeRoute from "./routes/blockedTime"
@@ -33,13 +34,24 @@ if (DEV_MODE) {
     app.use("/api", devRoute, authRouter)
 } else {
     console.log("database in use")
-    try {
-        query_database("SELECT 1;")
-            .then(() => console.log("Connected to database"))
-            .catch((e) => console.error("Database error:", e))
-    } catch (e) {
-        console.error(e)
+    
+    // Initialize database and run migrations
+    const initializeDatabase = async () => {
+        try {
+            // Test database connection
+            await query_database("SELECT 1;")
+            console.log("Connected to database")
+            
+            await runMigrations()
+            
+        } catch (e) {
+            console.error("Database setup error:", e)
+            process.exit(1) 
+        }
     }
+    
+    initializeDatabase()
+    
     app.use("/api", controllersRoute, authRouter)
     app.use("/api", sessionsRoute)
     app.use("/api", historyRoute)

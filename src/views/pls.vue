@@ -54,83 +54,13 @@
             />
         </v-row>
 
-        <v-dialog v-model="showControllerDialog" max-width="500">
-            <v-card>
-                <v-card-title>Start shift</v-card-title>
-                <v-card-text>
-                    <v-form ref="controllerForm" @submit.prevent>
-                        <v-text-field v-model="newController.cid" label="CID" autofocus @keyup.enter="startSession"></v-text-field>
-                        <p v-if="controllerMatch()" class="ml-4">
-                            {{ isActiveController(newController) ? "Controller is already active" : foundController?.name + " found" }}
-                        </p>
-                        <p v-else-if="newController.cid.length > 0" class="ml-4">Incorrect CID</p>
-                        <v-card-actions>
-                            <v-btn v-if="controllerMatch() && !isActiveController(newController)" color="primary" @click="startSession"
-                                >Start shift</v-btn
-                            >
-                            <v-btn
-                                v-if="!controllerMatch() && !isActiveController(newController)"
-                                color="primary"
-                                @click="showNewControllerDialog = true"
-                                >New controller</v-btn
-                            >
-                            <v-btn variant="text" @click=";(showControllerDialog = false), (newController.cid = '')">Cancel</v-btn>
-                        </v-card-actions>
-                    </v-form>
-                </v-card-text>
-            </v-card>
-        </v-dialog>
-
-        <!-- Dialog for Adding a New Controller -->
-        <v-dialog v-model="showNewControllerDialog" max-width="500">
-            <v-card>
-                <v-card-title>New controller</v-card-title>
-                <v-card-text>
-                    <v-form ref="newControllerForm">
-                        <v-text-field
-                            v-model="newController.name"
-                            label="Full Name"
-                            autofocus
-                            :rules="[(v: string) => v.length >= 3 || 'Name must be at least 3 characters long']"
-                        ></v-text-field>
-                        <v-text-field
-                            v-model="newController.sign"
-                            label="Signature (2 letters)"
-                            :rules="[(v: string) => /^[a-zA-Z]{2}$/.test(v) || 'Sign must be 2 letters']"
-                            maxlength="2"
-                        ></v-text-field>
-                        <v-text-field
-                            v-model="newController.cid"
-                            label="CID"
-                            :rules="[(v: string) => /^\d{5,8}$/.test(v) || 'CID must be 5-8 digits']"
-                        ></v-text-field>
-                        <v-select
-                            v-model="newController.rating"
-                            :items="ratings"
-                            label="Rating"
-                            :rules="[(v: string) => !!v || 'Rating is required']"
-                        ></v-select>
-                        <v-select
-                            v-model="tempEndorsment"
-                            :items="endorsments"
-                            label="Endorsment"
-                            chips
-                            multiple
-                            :rules="[(v: string) => !!v && v.length > 0 || 'Endorsment is required']"
-                        >
-                        </v-select>
-                    </v-form>
-                </v-card-text>
-                <v-card-actions>
-                    <v-btn color="primary" @click="addNewController" :disabled="!isNewControllerFormValid">Add</v-btn>
-                    <v-btn
-                        variant="text"
-                        @click=";(showNewControllerDialog = false), (showControllerDialog = false), (newController.cid = '')"
-                        >Cancel</v-btn
-                    >
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
+        <AddControllerDialog
+            v-model="showControllerDialog"
+            :predefined-controllers="predefinedControllers"
+            :all-active-controllers="getAllControllers"
+            :api-base-url="apiBaseUrl"
+            @controller-added="onControllerAdded"
+        />
 
         <!-- Dialog for Removing an Existing Controller -->
         <v-dialog v-model="showDeleteControllerDialog" max-width="500">
@@ -223,12 +153,12 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, nextTick, watch, Ref, ComponentPublicInstance } from "vue"
-import { VueDraggable } from "vue-draggable-plus"
 import dayjs from "dayjs"
 import duration from "dayjs/plugin/duration"
 import utc from "dayjs/plugin/utc"
 import timezone from "dayjs/plugin/timezone"
 import ControllerColumn from "@/components/ControllerColumn.vue"
+import AddControllerDialog from "@/components/AddControllerDialog.vue"
 
 dayjs.extend(duration)
 dayjs.extend(utc)
@@ -253,8 +183,6 @@ import callsigns from "@/assets/callsigns.txt?raw"
 
 const CallsignsList = computed(() => callsigns.split("\n").filter((line) => line.trim() !== ""))
 
-const ratings = ["S1", "S2", "S3", "C1"]
-const endorsments = ["NIL", "T2 APS", "T1 TWR", "T1 APP", "SOLO GG TWR", "SOLO GG APP"]
 const positions = [
     "Online",
     "GG APP",
@@ -349,8 +277,6 @@ const backupControllerNames = ref<Controller[] | null>(null)
 const backupAwayControllers = ref<Controller[] | null>(null)
 const backupControllers = ref(false)
 
-const tempEndorsment = ref<string[]>([])
-
 const newController = ref({
     name: "",
     sign: "",
@@ -370,31 +296,6 @@ const allPositions = computed(() => positionGroups.value.flatMap((group) => grou
 
 const positionDialog = ref(false)
 
-const newControllerForm = ref(null)
-
-const isNewControllerFormValid = computed(() => {
-    if (!newControllerForm.value) return false
-    return (
-        newController.value.name.length >= 3 &&
-        /^[a-zA-Z]{2}$/.test(newController.value.sign) &&
-        /^\d{5,8}$/.test(newController.value.cid) &&
-        !!newController.value.rating &&
-        !!tempEndorsment.value
-    )
-})
-
-function controllerMatch() {
-    const controllersSearch = predefinedControllers.value.filter((controller) => controller.cid === newController.value.cid)
-    const allControllersSearch = getAllControllers.value.filter((controller) => controller.cid === newController.value.cid)
-    if (controllersSearch) {
-        foundController.value = controllersSearch[0]
-    } else if (allControllersSearch) {
-        foundController.value = allControllersSearch[0]
-    }
-
-    return controllersSearch.length > 0 || allControllersSearch.length > 0
-}
-
 function controllerMatchLogoff() {
     const controllersSearch = getAllControllers.value.filter((controller) => controller.cid === newController.value.cid)
     if (controllersSearch) {
@@ -402,11 +303,6 @@ function controllerMatchLogoff() {
     }
 
     return controllersSearch.length > 0
-}
-
-function isActiveController(ctrl: Controller) {
-    if (!ctrl) return false
-    return getAllControllers.value.find((controller) => controller.cid === ctrl.cid) || false
 }
 
 function isAuthorized() {
@@ -494,20 +390,6 @@ async function saveControllers(movedController: Controller) {
     sortControllerSessions()
 }
 
-const addControllerToDB = async (newcontroller: Controller) => {
-    try {
-        await fetch(`${apiBaseUrl}/api/controller/new`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ Controller: newcontroller }),
-        })
-    } catch (error) {
-        console.error("Error saving controller data:", error)
-    }
-}
-
 const deleteControllerAsActive = async (controllerToRemoveCID: string) => {
     try {
         await fetch(`${apiBaseUrl}/api/controller/remove`, {
@@ -528,66 +410,10 @@ const deleteControllerAsActive = async (controllerToRemoveCID: string) => {
  * OTHER
  */
 
-function addNewController() {
-    if (isNewControllerFormValid.value) {
-        const newCreatedController = {
-            ...newController.value,
-            endorsment: tempEndorsment.value.join(", "),
-            sign: newController.value.sign.toUpperCase(),
-            timestamp: dayjs.utc().format(),
-        }
-        controllerNames.value.push(newCreatedController)
-
-        newController.value = {
-            name: "",
-            sign: "",
-            cid: "",
-            callsign: "",
-            position: "",
-            frequency: "",
-            rating: "",
-            endorsment: "",
-            timestamp: dayjs.utc().format(),
-        }
-        tempEndorsment.value.length = 0
-
-        showNewControllerDialog.value = false
-        showControllerDialog.value = false
-
-        addControllerToDB(controllerNames.value.slice(-1)[0])
-    }
-}
-
-function startSession() {
-    if (foundController.value) {
-        controllerNames.value.push({
-            ...foundController.value!,
-            position: "pause",
-            callsign: "pause",
-            timestamp: dayjs.utc().format(),
-        })
-
-        foundController.value!.position = "pause"
-        foundController.value!.callsign = "pause"
-
-        saveControllers(foundController.value!)
-
-        foundController.value = null
-
-        newController.value = {
-            name: "",
-            sign: "",
-            cid: "",
-            callsign: "",
-            position: "",
-            frequency: "",
-            rating: "",
-            endorsment: "",
-            timestamp: dayjs.utc().format(),
-        }
-    }
-
-    showControllerDialog.value = false
+function onControllerAdded(controller: Controller) {
+    // Add the controller to the break/pause list
+    controllerNames.value.push(controller)
+    sortControllerSessions()
 }
 
 function stopSession() {
@@ -825,14 +651,6 @@ function onRemove() {
     if (selectedController.value) {
         saveControllers(selectedController.value)
     }
-}
-
-function onUpdate() {
-    if (selectedController.value) {
-        saveControllers(selectedController.value)
-    }
-
-    sortControllerSessions()
 }
 
 function calculateSessionLength(timestamp: string) {

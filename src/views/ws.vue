@@ -2,7 +2,10 @@
     <div class="ws-panel">
         <div class="d-flex justify-space-between">
             <h1>WS Panel</h1>
-            <v-btn class="mt-2" @click="openEditControllerDialog">Edit Controller</v-btn>
+            <div class="d-flex-end mt-2">
+                <v-btn color="#5865f2" @click="openAddControllerDialog">Add Controller</v-btn>
+                <v-btn class="ml-2" @click="openEditControllerDialog">Edit Controller</v-btn>
+            </div>
         </div>
         <v-tabs v-model="tab">
             <v-tab v-for="tabPages in tabs" :key="tabPages"> {{ tabPages }} </v-tab>
@@ -85,6 +88,13 @@
             @confirm="confirmDeleteBlockedTime"
         />
         <EditControllerDialog v-model="editControllerDialog" :controller="pendingEditController" @confirm="handleEditControllerConfirm" />
+        <AddControllerDialog
+            v-model="addControllerDialog"
+            :predefined-controllers="savedControllersAsControllers"
+            :all-active-controllers="allActiveControllers"
+            :api-base-url="apiBaseUrl"
+            @controller-added="handleControllerAdded"
+        />
     </div>
 </template>
 
@@ -94,6 +104,7 @@ import Timeline from "@/components/Timeline.vue"
 import BlockTimeDialog from "@/components/BlockTimeDialog.vue"
 import DeleteBlockedTimeDialog from "@/components/DeleteBlockedTimeDialog.vue"
 import EditControllerDialog from "@/components/EditControllerDialog.vue"
+import AddControllerDialog from "@/components/AddControllerDialog.vue"
 import dayjs from "dayjs"
 import utc from "dayjs/plugin/utc"
 import type { Controller } from "@/views/pls.vue"
@@ -164,6 +175,31 @@ const pendingDeleteBlock = ref<BlockedTime | null>(null)
 // Edit controller dialog state
 const editControllerDialog = ref(false)
 const pendingEditController = ref<smallController | null>(null)
+
+// Add controller dialog state
+const addControllerDialog = ref(false)
+
+// Computed property for all active controllers
+const allActiveControllers = computed(() => [
+    ...(activeSessions.value || []),
+    ...(availableSessions.value || []),
+    ...(awaySessions.value || []),
+])
+
+// Convert savedControllers to full Controller format for AddControllerDialog
+const savedControllersAsControllers = computed<Controller[]>(() =>
+    savedControllers.value.map((c) => ({
+        name: c.name,
+        sign: c.sign,
+        cid: c.cid,
+        callsign: "",
+        position: "",
+        frequency: "",
+        rating: c.rating,
+        endorsment: c.endorsements?.join(", ") || "",
+        timestamp: "",
+    }))
+)
 
 const callsigns = computed(() => {
     const positionsSet = new Set<string>()
@@ -871,6 +907,16 @@ function confirmDeleteBlockedTime() {
             console.error("Failed to delete blocked time:", err)
             alert(`Failed to delete blocked time: ${err.message}`)
         })
+}
+
+function openAddControllerDialog() {
+    addControllerDialog.value = true
+}
+
+function handleControllerAdded(controller: Controller) {
+    console.log("Controller added:", controller)
+    // Refresh data to show the new controller
+    refresh()
 }
 
 function openEditControllerDialog() {

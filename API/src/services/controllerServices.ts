@@ -44,7 +44,17 @@ export async function activeControllersService(): Promise<{ Controllers: Control
 }
 
 export async function predefinedControllersService() {
-    return await query_database("SELECT cid, controller_name as name, sign, controller_rating as rating FROM controller;")
+    return await query_database(`
+        SELECT
+            c.cid,
+            c.controller_name AS name,
+            c.sign,
+            c.controller_rating AS rating,
+            COALESCE(array_agg(e.endorsement::text) FILTER (WHERE e.endorsement IS NOT NULL), '{}') AS endorsements
+        FROM controller c
+        LEFT JOIN Endorsements e ON c.cid = e.cid
+        GROUP BY c.cid, c.controller_name, c.sign, c.controller_rating;
+    `)
 }
 
 export async function getControllerStateService(cid: string): Promise<QueryResult<OActivity>> {

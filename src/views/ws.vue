@@ -1,43 +1,99 @@
 <template>
     <div class="ws-panel">
-        <h1>WS Panel</h1>
+        <div class="d-flex justify-space-between">
+            <h1>WS Panel</h1>
+            <v-btn class="mt-2" @click="openEditControllerDialog">Edit Controller</v-btn>
+        </div>
         <v-tabs v-model="tab">
-            <v-tab v-for="tabPages in tabs"> {{ tabPages }} </v-tab>
+            <v-tab v-for="tabPages in tabs" :key="tabPages"> {{ tabPages }} </v-tab>
         </v-tabs>
         <v-tabs-window v-model="tab">
             <v-tabs-window-item v-for="tabPages in tabs" :key="tabPages">
                 <div class="chart-section border-radius mt-2">
-                    <div class="d-flex justify-space-between align-center mb-4 mt-2">
-                        <h2>{{ tabPages }} tab</h2>
+                    <div class="d-flex justify-end align-center mb-4 mt-2">
                         <div class="d-flex">
                             <p class="mr-3 mt-2">Last updated: {{ LatestUpdatedUTC.format("HH:mm:ss") }}z</p>
                             <v-btn @click="refresh" color="primary">refresh</v-btn>
                         </div>
                     </div>
-                    <Timeline :chartData="chartData2" :chartOptions="chartOptions" />
+                    <Timeline
+                        v-if="tab === 1"
+                        :chartData="chartData2"
+                        :chartOptions="chartOptions"
+                        @requestBlockTime="openBlockTimeDialog"
+                        @clickBlockedTime="handleClickBlockedTime"
+                    />
+                    <Timeline v-else :chartData="chartData2" :chartOptions="chartOptions" />
                 </div>
                 <div class="mx-4">
                     <v-range-slider :min="0" :max="24" :step="1" strict v-model="range"></v-range-slider>
                 </div>
-                <div class="ml-2" v-if="tab === 2">
+                <div class="ml-2">
                     <h2>Filter</h2>
-                    <v-checkbox-btn
-                        density="compact"
-                        v-model="selectedCallsigns"
-                        v-for="position in callsigns"
-                        :value="position"
-                        :label="position"
-                    ></v-checkbox-btn>
+                    <div v-if="tab === 0">
+                        <v-checkbox-btn
+                            density="compact"
+                            v-model="selectedPositions"
+                            v-for="position in positions"
+                            :value="position"
+                            :label="position"
+                            :key="position"
+                        ></v-checkbox-btn>
+                    </div>
+                    <div v-else-if="tab === 1">
+                        <template v-for="(rating, index) in ['C1', 'S3', 'S2', 'S1', 'Other']" :key="rating">
+                            <div v-if="controllersByRating[rating].length > 0" :class="{ 'mt-4': index > 0 }">
+                                <div class="d-flex justify-space-between align-center mb-2">
+                                    <h3 class="text-subtitle-1 font-weight-bold">{{ rating }}</h3>
+                                    <div>
+                                        <v-btn size="x-small" variant="text" @click="selectAllInRating(rating)" class="mr-1">
+                                            Select All
+                                        </v-btn>
+                                        <v-btn size="x-small" variant="text" @click="deselectAllInRating(rating)"> Deselect All </v-btn>
+                                    </div>
+                                </div>
+                                <v-checkbox-btn
+                                    density="compact"
+                                    v-model="selectedControllers"
+                                    v-for="controller in controllersByRating[rating]"
+                                    :value="controller"
+                                    :label="tooltipInformation(controller)"
+                                    :key="controller"
+                                ></v-checkbox-btn>
+                            </div>
+                        </template>
+                    </div>
+                    <div v-else-if="tab === 2">
+                        <v-checkbox-btn
+                            density="compact"
+                            v-model="selectedCallsigns"
+                            v-for="callsign in callsigns"
+                            :value="callsign"
+                            :label="callsign"
+                            :key="callsign"
+                        ></v-checkbox-btn>
+                    </div>
                 </div>
             </v-tabs-window-item>
         </v-tabs-window>
+
+        <BlockTimeDialog v-model="blockTimeDialog" :blockData="pendingBlockTime" @confirm="handleBlockTimeConfirm" />
+        <DeleteBlockedTimeDialog
+            v-model="deleteBlockedTimeDialog"
+            :blockedTime="pendingDeleteBlock"
+            :controllerName="pendingDeleteBlock ? tooltipInformation(pendingDeleteBlock.cid) : ''"
+            @confirm="confirmDeleteBlockedTime"
+        />
+        <EditControllerDialog v-model="editControllerDialog" :controller="pendingEditController" @confirm="handleEditControllerConfirm" />
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from "vue"
-import { useRouter } from "vue-router"
+import { ref, computed, onMounted, onUnmounted, watch } from "vue"
 import Timeline from "@/components/Timeline.vue"
+import BlockTimeDialog from "@/components/BlockTimeDialog.vue"
+import DeleteBlockedTimeDialog from "@/components/DeleteBlockedTimeDialog.vue"
+import EditControllerDialog from "@/components/EditControllerDialog.vue"
 import dayjs from "dayjs"
 import utc from "dayjs/plugin/utc"
 import type { Controller } from "@/views/pls.vue"
@@ -57,20 +113,57 @@ interface smallController {
     name: string
     sign: string
     rating: string
+    endorsements?: string[]
+}
+
+interface BlockedTime {
+    block_id: number
+    cid: string
+    position: string
+    blocked_start: number // ms
+    blocked_end: number // ms
+    reason: string
+    notes?: string
+    created_at: number // ms
 }
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001"
-const router = useRouter()
-document.title = "WS PANEL"
+document.title = "VATPLS | WS"
 
+// Tab navigation
 const tab = ref(0)
 const tabs = ["Positions", "Controllers", "Callsign"]
+
+// Controller data - history and active sessions
 const controllerEntries = ref<historyController[]>([])
 const activeSessions = ref<Controller[]>()
-const LatestUpdatedUTC = ref(dayjs.utc())
-const selectedCallsigns = ref<string[]>([])
+const availableSessions = ref<Controller[]>()
+const awaySessions = ref<Controller[]>()
 const savedControllers = ref<smallController[]>([])
+const LatestUpdatedUTC = ref(dayjs.utc())
+
+// Blocked times data
+const blockedTimes = ref<BlockedTime[]>([])
+
+// Filter selections
+const selectedCallsigns = ref<string[]>([])
+const selectedPositions = ref<string[]>([])
+const selectedControllers = ref<string[]>([])
+
+// Chart configuration
 const range = ref([0, 24])
+
+// Block time dialog state
+const blockTimeDialog = ref(false)
+const pendingBlockTime = ref<{ position: string; startTime: number; endTime: number } | null>(null)
+
+// Delete blocked time dialog state
+const deleteBlockedTimeDialog = ref(false)
+const pendingDeleteBlock = ref<BlockedTime | null>(null)
+
+// Edit controller dialog state
+const editControllerDialog = ref(false)
+const pendingEditController = ref<smallController | null>(null)
 
 const callsigns = computed(() => {
     const positionsSet = new Set<string>()
@@ -81,8 +174,6 @@ const callsigns = computed(() => {
         if (entry.callsign == undefined || entry.position == undefined) return
         positionsSet.add(entry.callsign)
     })
-    // selectedPositions.value = Array.from(positionsSet)
-    console.log(positionsSet)
     return Array.from(positionsSet).sort()
 })
 
@@ -111,7 +202,67 @@ const controllers = computed(() => {
     return Array.from(controllersSet)
 })
 
-// Use consistent colors for each controller (CID) across all tabs
+const controllersByRating = computed(() => {
+    const groups: { [rating: string]: string[] } = {
+        C1: [],
+        S3: [],
+        S2: [],
+        S1: [],
+        Other: [],
+    }
+
+    controllers.value.forEach((cid) => {
+        const controller = savedControllers.value.find((c) => c.cid === cid)
+        if (controller) {
+            const rating = controller.rating
+            // C3 controllers are grouped with C1
+            if (rating === "C3" || rating === "C1" || rating === "I1") {
+                groups["C1"].push(cid)
+            } else if (rating in groups) {
+                groups[rating].push(cid)
+            } else {
+                groups["Other"].push(cid)
+            }
+        } else {
+            groups["Other"].push(cid)
+        }
+    })
+
+    return groups
+})
+
+// Initialize selections when data changes
+watch(
+    callsigns,
+    (newCallsigns) => {
+        if (newCallsigns.length > 0 && selectedCallsigns.value.length === 0) {
+            selectedCallsigns.value = [...newCallsigns]
+        }
+    },
+    { immediate: true }
+)
+
+watch(
+    positions,
+    (newPositions) => {
+        if (newPositions.length > 0 && selectedPositions.value.length === 0) {
+            selectedPositions.value = [...newPositions]
+        }
+    },
+    { immediate: true }
+)
+
+watch(
+    controllers,
+    (newControllers) => {
+        if (newControllers.length > 0 && selectedControllers.value.length === 0) {
+            selectedControllers.value = [...newControllers]
+        }
+    },
+    { immediate: true }
+)
+
+// Use consistent colors for each CID across all tabs
 const controllerColors: { [key: string]: string } = {}
 const availableColors = ["#ff6b6b", "#4ecdc4", "#45b7d1", "#96ceb4", "#ffeaa7", "#dda0dd", "#98d8c8", "#f39c12", "#e74c3c", "#9b59b6"]
 
@@ -205,6 +356,40 @@ function generatePositionsDatasets(sessions: historyController[], usePositions: 
         })
     })
 
+    blockedTimes.value.forEach((blockedTime) => {
+        let data: any[]
+        const startTime = blockedTime.blocked_start
+        const endTime = blockedTime.blocked_end
+
+        if (usePositions) {
+            // Positions view - map against positions
+            data = positions.value.map((position) => {
+                if (position === blockedTime.position) {
+                    return [startTime, endTime]
+                }
+                return null
+            })
+        } else {
+            // Callsigns view - map against callsigns
+            data = callsigns.value.map((callsign) => {
+                if (callsign === blockedTime.position) {
+                    return [startTime, endTime]
+                }
+                return null
+            })
+        }
+
+        datasets.push({
+            label: `BLOCKED-${blockedTime.block_id}`,
+            data: data,
+            backgroundColor: "rgba(255, 0, 0, 0.5)",
+            borderColor: "rgba(255, 0, 0, 0.8)",
+            borderWidth: 2,
+            borderSkipped: false,
+            barThickness: "flex",
+        })
+    })
+
     return datasets
 }
 
@@ -272,30 +457,67 @@ function generateControllersDatasets(sessions: historyController[]) {
         })
     })
 
+    // Add blocked times as separate datasets
+    blockedTimes.value.forEach((blockedTime) => {
+        const data = controllers.value.map((controllerCid) => {
+            if (controllerCid === blockedTime.cid) {
+                const startTime = blockedTime.blocked_start
+                const endTime = blockedTime.blocked_end
+                return [startTime, endTime]
+            }
+            return null
+        })
+
+        datasets.push({
+            label: `BLOCKED-${blockedTime.block_id}`,
+            data: data,
+            backgroundColor: "rgba(255, 0, 0, 0.5)", // Red with transparency for blocked times
+            borderColor: "rgba(255, 0, 0, 0.8)",
+            borderWidth: 2,
+            borderSkipped: false, // Show borders on all sides
+            barThickness: "flex",
+        })
+    })
+
     return datasets
 }
 
+// filter related stuff
+const filteredCallsigns = computed(() => {
+    return callsigns.value.filter((c) => selectedCallsigns.value.includes(c))
+})
+
+const filteredPositions = computed(() => {
+    return positions.value.filter((p) => selectedPositions.value.includes(p))
+})
+
+const filteredControllers = computed(() => {
+    return controllers.value.filter((c) => selectedControllers.value.includes(c))
+})
+
 // chartjs data format
 const chartData2 = computed(() => {
+    //positions (actual real positions) ACC1, APP1 etc
     if (tab.value === 0) {
-        // Positions tab - positions on Y-axis, controllers as bars
         const datasets = generatePositionsDatasets(controllerEntries.value, true)
         return {
-            labels: positions.value,
+            labels: filteredPositions.value,
             datasets: datasets,
         }
-    } else if (tab.value === 1) {
-        // Controllers tab - controllers on Y-axis, positions as bars
+    }
+    // controllers
+    else if (tab.value === 1) {
         const datasets = generateControllersDatasets(controllerEntries.value)
         return {
-            labels: controllers.value,
+            labels: filteredControllers.value,
             datasets: datasets,
         }
-    } else {
-        // Callsigns tab (tab 2) - callsigns on Y-axis
+    }
+    // callsigns ESSA_TWR etc.
+    else {
         const datasets = generatePositionsDatasets(controllerEntries.value, false)
         return {
-            labels: callsigns.value, // Use callsigns computed property instead of empty selectedCallsigns
+            labels: filteredCallsigns.value,
             datasets: datasets,
         }
     }
@@ -318,11 +540,15 @@ const chartOptions = computed(() => {
                 formatter: function (value: any, context: any) {
                     if (Array.isArray(value) && value.length === 2) {
                         // TODO hide label on very small bars
-                        return `${context.chart.data.labels[context.dataIndex]}`
+                        const start = value[0]
+                        const end = value[1]
+                        const hideForMinutes = 10
+
+                        if (end - start > 1000 * 60 * hideForMinutes) return `${context.chart.data.labels[context.dataIndex]}`
                     }
                     return ""
                 },
-                color: "black",
+                color: "#e0e0e0",
                 font: {
                     size: 8,
                     weight: "bold",
@@ -346,6 +572,30 @@ const chartOptions = computed(() => {
                     label: function (context: any) {
                         const datasetLabel = context.dataset.label
                         const data = context.raw
+
+                        // Check if this is a blocked time
+                        if (datasetLabel && datasetLabel.startsWith("BLOCKED-")) {
+                            const blockId = datasetLabel.replace("BLOCKED-", "")
+                            const blockedTime = blockedTimes.value.find(
+                                (bt) => bt.block_id.toString() === blockId || bt.position === blockId
+                            )
+
+                            if (Array.isArray(data) && data.length === 2) {
+                                const startTime = dayjs.utc(data[0]).format("HH:mm")
+                                const endTime = dayjs.utc(data[1]).format("HH:mm")
+
+                                if (blockedTime) {
+                                    return [
+                                        `BLOCKED: ${startTime} - ${endTime}z`,
+                                        `Reason: ${blockedTime.reason}`,
+                                        blockedTime.notes ? `Notes: ${blockedTime.notes}` : "",
+                                    ].filter(Boolean)
+                                }
+                                return `BLOCKED: ${startTime} - ${endTime}z`
+                            }
+                        }
+
+                        // Regular session tooltip
                         if (Array.isArray(data) && data.length === 2) {
                             const startTime = dayjs.utc(data[0]).format("HH:mm")
                             const endTime = dayjs.utc(data[1]).format("HH:mm")
@@ -372,6 +622,9 @@ const chartOptions = computed(() => {
         scales: {
             y: {
                 stacked: true,
+                ticks: {
+                    color: "#e0e0e0",
+                },
             },
             x: {
                 type: "linear" as const,
@@ -383,6 +636,7 @@ const chartOptions = computed(() => {
                     callback: function (value: any) {
                         return dayjs.utc(value).format("HH:mm")
                     },
+                    color: "#e0e0e0",
                 },
             },
         },
@@ -394,15 +648,29 @@ function tooltipInformation(label: string): string {
         return `Position ${label}`
     }
 
-    if (tab.value === 1) {
-    }
-
     const controller = savedControllers.value.find((c) => c.cid === label)
     if (controller) {
-        return `[${controller.rating}] ${controller.name}`
+        return ` ${controller.name} (${controller.cid})`
     } else {
         return `Position ${label}`
     }
+}
+
+/**
+ * Rating filter functions
+ */
+function selectAllInRating(rating: string) {
+    const controllersInRating = controllersByRating.value[rating]
+    controllersInRating.forEach((cid) => {
+        if (!selectedControllers.value.includes(cid)) {
+            selectedControllers.value.push(cid)
+        }
+    })
+}
+
+function deselectAllInRating(rating: string) {
+    const controllersInRating = controllersByRating.value[rating]
+    selectedControllers.value = selectedControllers.value.filter((cid) => !controllersInRating.includes(cid))
 }
 
 /**
@@ -412,13 +680,10 @@ async function fetchControllerInfo() {
     try {
         const response = await fetch(`${apiBaseUrl}/api/controller/saved`)
         const data = await response.json()
-        // Ensure data is an array
-        console.log(data)
         savedControllers.value = Array.isArray(data.Controllers) ? data.Controllers : []
-        console.log("Saved controllers:", savedControllers.value)
     } catch (err) {
         console.error("Error fetching controller info:", err)
-        savedControllers.value = [] // Fallback to empty array
+        savedControllers.value = []
     }
 }
 
@@ -442,13 +707,32 @@ function fetchControllerHistory() {
         })
 }
 
+function fetchBlockedTimes() {
+    fetch(`${apiBaseUrl}/api/blocked-time?day=${dayjs.utc().format("YYYY-MM-DD")}`)
+        .then((resp) => resp.json())
+        .then((data) => {
+            blockedTimes.value = (data.blockedTimes || []).map((bt: any) => ({
+                ...bt,
+                blocked_start: dayjs.utc(bt.blocked_start).valueOf(),
+                blocked_end: dayjs.utc(bt.blocked_end).valueOf(),
+                created_at: dayjs.utc(bt.created_at).valueOf(),
+            }))
+        })
+        .catch((err) => {
+            console.error("Error fetching blocked times:", err)
+        })
+}
+
 let unsubscribe: undefined | (() => void) = undefined
 
 function subscribe() {
     const evtSource = new EventSource(`${apiBaseUrl}/subscribe-long`)
     evtSource.onmessage = (ev) => {
         LatestUpdatedUTC.value = dayjs.utc()
-        activeSessions.value = JSON.parse(ev.data).activeControllers
+        const jsonData = JSON.parse(ev.data)
+        availableSessions.value = jsonData.availableControllers
+        awaySessions.value = jsonData.awayControllers
+        activeSessions.value = jsonData.activeControllers
     }
     return () => {
         evtSource.close()
@@ -458,6 +742,7 @@ function subscribe() {
 const refresh = async () => {
     LatestUpdatedUTC.value = dayjs.utc()
     fetchControllerHistory()
+    fetchBlockedTimes()
     if (unsubscribe) unsubscribe() // force request data from api...
     try {
         const response = await fetch(`${apiBaseUrl}/api/controllers`)
@@ -469,12 +754,23 @@ const refresh = async () => {
 
     // Restart the subscription
     unsubscribe = subscribe()
+
+    // hack to get all items after refresh has been done
+    setTimeout(() => {
+        if (callsigns.value.length > 0) selectedCallsigns.value = [...callsigns.value]
+        if (positions.value.length > 0) selectedPositions.value = [...positions.value]
+        if (controllers.value.length > 0) selectedControllers.value = [...controllers.value]
+    }, 200)
 }
 
 onMounted(async () => {
     LatestUpdatedUTC.value = dayjs.utc()
+    // latest passed hour
+    const closestHour = dayjs.utc().startOf("hour").add(-1, "hour")
+    range.value = [closestHour.hour(), 24]
     fetchControllerHistory()
     fetchControllerInfo()
+    fetchBlockedTimes()
     unsubscribe = subscribe()
     try {
         const response = await fetch(`${apiBaseUrl}/api/controllers`)
@@ -483,11 +779,139 @@ onMounted(async () => {
     } catch (err) {
         console.error("Error fetching initial controller data:", err)
     }
+
+    // Ensure all items are selected after initial data load with multiple checks
+    const initSelections = () => {
+        if (callsigns.value.length > 0) selectedCallsigns.value = [...callsigns.value]
+        if (positions.value.length > 0) selectedPositions.value = [...positions.value]
+        if (controllers.value.length > 0) selectedControllers.value = [...controllers.value]
+    }
+    // fix this properly
+    setTimeout(initSelections, 1000)
 })
 
 onUnmounted(() => {
     if (unsubscribe) unsubscribe()
 })
+
+/**
+ * Block time dialog functions
+ */
+function openBlockTimeDialog(payload: { position: string; startTime: number; endTime: number }) {
+    pendingBlockTime.value = payload
+    blockTimeDialog.value = true
+}
+
+function handleClickBlockedTime(payload: { blockId: number }) {
+    const blockedTime = blockedTimes.value.find((bt) => bt.block_id === payload.blockId)
+
+    if (blockedTime) {
+        pendingDeleteBlock.value = blockedTime
+        deleteBlockedTimeDialog.value = true
+    } else {
+        console.error("Blocked time not found:", payload.blockId)
+    }
+}
+
+function handleBlockTimeConfirm(payload: { position: string; startTime: number; endTime: number; reason: string; notes: string }) {
+    // In Controllers tab, payload.position is the CID
+    const cid = payload.position
+
+    fetch(`${apiBaseUrl}/api/blocked-time`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            cid: cid,
+            position: payload.position, // Store CID as position for Controllers tab
+            blocked_start: dayjs.utc(payload.startTime).toISOString(),
+            blocked_end: dayjs.utc(payload.endTime).toISOString(),
+            reason: payload.reason,
+            notes: payload.notes,
+        }),
+    })
+        .then((response) => {
+            if (!response.ok) {
+                return response.json().then((err) => {
+                    throw new Error(err.error || "Failed to block time")
+                })
+            }
+            return response.json()
+        })
+        .then(() => {
+            // Refresh data to show the new blocked time
+            fetchBlockedTimes()
+        })
+        .catch((err) => {
+            console.error("Failed to block time:", err)
+            alert(`Failed to block time: ${err.message}`)
+        })
+}
+
+function confirmDeleteBlockedTime() {
+    if (!pendingDeleteBlock.value) return
+
+    fetch(`${apiBaseUrl}/api/blocked-time/${pendingDeleteBlock.value.block_id}`, {
+        method: "DELETE",
+    })
+        .then((response) => {
+            if (!response.ok) {
+                return response.json().then((err) => {
+                    throw new Error(err.error || "Failed to delete blocked time")
+                })
+            }
+            return response.json()
+        })
+        .then(() => {
+            deleteBlockedTimeDialog.value = false
+            pendingDeleteBlock.value = null
+            // Refresh data to remove the deleted blocked time
+            fetchBlockedTimes()
+        })
+        .catch((err) => {
+            console.error("Failed to delete blocked time:", err)
+            alert(`Failed to delete blocked time: ${err.message}`)
+        })
+}
+
+function openEditControllerDialog() {
+    pendingEditController.value = null
+    editControllerDialog.value = true
+}
+
+function handleEditControllerConfirm(controller: smallController) {
+    fetch(`${apiBaseUrl}/api/controller/${controller.cid}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            name: controller.name,
+            sign: controller.sign,
+            rating: controller.rating,
+            endorsements: controller.endorsements || [],
+        }),
+    })
+        .then((response) => {
+            if (!response.ok) {
+                return response.json().then((err) => {
+                    throw new Error(err.error || "Failed to update controller")
+                })
+            }
+            return response.json()
+        })
+        .then(() => {
+            const index = savedControllers.value.findIndex((c) => c.cid === controller.cid)
+            if (index !== -1) {
+                savedControllers.value[index] = controller
+            } else {
+                savedControllers.value.push(controller)
+            }
+            editControllerDialog.value = false
+            pendingEditController.value = null
+        })
+        .catch((err) => {
+            console.error("Failed to update controller:", err)
+            alert(`Failed to update controller: ${err.message}`)
+        })
+}
 </script>
 
 <style scoped>
@@ -498,14 +922,14 @@ onUnmounted(() => {
 .chart-section {
     margin-bottom: 40px;
     padding: 10px;
+    background: #2b2b2b;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-.chart-container {
-    height: 400px;
-    background: white;
-    border-radius: 8px;
-    padding: 20px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+.chart-section h2,
+.chart-section p {
+    color: #e0e0e0;
 }
 
 .info-sections {

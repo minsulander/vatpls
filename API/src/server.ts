@@ -13,6 +13,7 @@ import { sortControllers } from "./controllers/controller"
 import { query_database } from "./db/database"
 import authRouter from "./routes/auth"
 import historyRoute from "./routes/history"
+import blockedTimeRoute from "./routes/blockedTime"
 
 const DEV_MODE = false // set to true if use system without database, otherwise set false.
 
@@ -42,6 +43,7 @@ if (DEV_MODE) {
     app.use("/api", controllersRoute, authRouter)
     app.use("/api", sessionsRoute)
     app.use("/api", historyRoute)
+    app.use("/api", blockedTimeRoute)
     //app.use("/api", activityRoute);
 }
 

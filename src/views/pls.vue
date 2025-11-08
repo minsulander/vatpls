@@ -279,6 +279,8 @@ const positions = [
     "Ö2",
 ]
 
+document.title = "VATPLS"
+
 const positionGroups = ref([
     {
         name: "ACC",
@@ -377,7 +379,7 @@ const isNewControllerFormValid = computed(() => {
         /^[a-zA-Z]{2}$/.test(newController.value.sign) &&
         /^\d{5,8}$/.test(newController.value.cid) &&
         !!newController.value.rating &&
-        !!tempEndorsment
+        !!tempEndorsment.value
     )
 })
 
@@ -557,7 +559,7 @@ function addNewController() {
 }
 
 function startSession() {
-    if (foundController) {
+    if (foundController.value) {
         controllerNames.value.push({
             ...foundController.value!,
             position: "pause",

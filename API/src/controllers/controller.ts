@@ -170,7 +170,7 @@ export async function addController(req: Request, res: Response) {
 
 /** Edit a controller */
 export async function editController(req: Request, res: Response) {
-    const { name, rating, sign }: { name?: string; rating?: string; sign?: string } = req.body
+    const { name, rating, sign, endorsements }: { name?: string; rating?: string; sign?: string; endorsements?: string[] } = req.body
     const cid = req.params.id
 
     try {
@@ -178,13 +178,28 @@ export async function editController(req: Request, res: Response) {
         if (!checkControllerExists(cid)) return res.status(400).json({ error: "Controller CID does not exist" })
 
         // Dynamic query, only adding those values that was provided in the request to the query.
-        const { query, values } = buildUpdateQuery(name, sign, rating, cid)
-        if (values.length == 1) return res.status(400).json({ error: "No fields to update." })
-        values.push(cid)
+        const { query, values } = buildUpdateQuery(name, sign, rating)
+        if (values.length == 0 && endorsements === undefined) return res.status(400).json({ error: "No fields to update." })
 
-        const result = await query_database(query, values)
+        if (values.length > 0) {
+            values.push(cid)
+            await query_database(query, values)
+        }
 
-        return res.json({ rowCount: result.rowCount, rows: result.rows })
+        // Update endorsements if provided
+        if (endorsements !== undefined) {
+            // Delete existing endorsements
+            await query_database("DELETE FROM Endorsements WHERE cid = $1", [cid])
+
+            // Insert new endorsements
+            if (endorsements.length > 0) {
+                for (const endorsement of endorsements) {
+                    await query_database("INSERT INTO Endorsements (cid, endorsement) VALUES ($1, $2)", [cid, endorsement])
+                }
+            }
+        }
+
+        return res.json({ success: true, message: "Controller updated successfully" })
     } catch (error: any) {
         return res.status(500).json({ error: error.message })
     }
@@ -227,7 +242,7 @@ export async function removeControllerAsActive(req: Request, res: Response) {
     res.status(200).json({ removed: result.rows })
 }
 
-const buildUpdateQuery = (name: string | undefined, sign: string | undefined, rating: string | undefined, cid: string) => {
+const buildUpdateQuery = (name: string | undefined, sign: string | undefined, rating: string | undefined) => {
     const values: string[] = []
     const updateString: string[] = []
     let index = 1
@@ -245,10 +260,10 @@ const buildUpdateQuery = (name: string | undefined, sign: string | undefined, ra
         values.push(rating)
     }
 
-    const query = `  
+    const query = `
         UPDATE Controller SET
         ${updateString.join(", ")}
-        WHERE cid = $${index}  
+        WHERE cid = $${index}
         `
     return { query, values }
 }

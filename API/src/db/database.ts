@@ -1,6 +1,6 @@
 import { QueryResult, Pool } from "pg"
 import dotenv from "dotenv"
-import { IActivity, NewController, OActive, OActivity, SkeletonController, State } from "../types/types"
+import { IActivity, NewController, OActive, OActivity, SkeletonController, State, NewBlockedTime, BlockedTime } from "../types/types"
 
 dotenv.config()
 
@@ -145,4 +145,55 @@ export const stateChange = async (ctrl: IActivity) => {
 
 export const deleteState = async (cid: string) => {
     return query_database("DELETE FROM active WHERE cid = $1;", [cid])
+}
+
+/**
+ * Blocked Time functions
+ */
+
+export const createBlockedTime = async (data: NewBlockedTime): Promise<QueryResult<BlockedTime>> => {
+    return query_database(
+        `INSERT INTO BlockedTime (cid, position, blocked_start, blocked_end, reason, notes)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING *;`,
+        [data.cid, data.position, data.blocked_start, data.blocked_end, data.reason, data.notes || null]
+    )
+}
+
+export const getBlockedTimes = async (date?: string): Promise<QueryResult<BlockedTime>> => {
+    if (date) {
+        return query_database(
+            `SELECT
+                block_id,
+                cid,
+                position,
+                blocked_start AT TIME ZONE 'UTC' as blocked_start,
+                blocked_end AT TIME ZONE 'UTC' as blocked_end,
+                reason,
+                notes,
+                created_at AT TIME ZONE 'UTC' as created_at
+             FROM BlockedTime
+             WHERE blocked_start::date = $1::date OR blocked_end::date = $1::date
+             ORDER BY blocked_start;`,
+            [date]
+        )
+    } else {
+        return query_database(
+            `SELECT
+                block_id,
+                cid,
+                position,
+                blocked_start AT TIME ZONE 'UTC' as blocked_start,
+                blocked_end AT TIME ZONE 'UTC' as blocked_end,
+                reason,
+                notes,
+                created_at AT TIME ZONE 'UTC' as created_at
+             FROM BlockedTime
+             ORDER BY blocked_start;`
+        )
+    }
+}
+
+export const deleteBlockedTime = async (block_id: number): Promise<QueryResult<any>> => {
+    return query_database("DELETE FROM BlockedTime WHERE block_id = $1;", [block_id])
 }

@@ -58,7 +58,7 @@
                             <v-col
                                 cols="2"
                                 class="border-cell no-border-right no-border-top"
-                                :style="controller.timestamp ? getSessionBorder(controller.timestamp) : ' '"
+                                :style="controller.timestamp ? getSessionBorder(controller.timestamp, controller.position ?? '') : ''"
                             >
                                 {{ formatTimeDifference(controller.timestamp) }}
                             </v-col>
@@ -242,7 +242,8 @@ const calculateSessionLength = (timestamp: string) => {
     return dayjs.duration(now.diff(start)).asSeconds()
 }
 
-const getSessionBorder = (sessionLength: string) => {
+const getSessionBorder = (sessionLength: string, sessionPosition: string) => {
+    if (sessionPosition?.toLowerCase() === "other" || sessionPosition?.toLowerCase() === "pause") return ""
     const totalMinutes = calculateSessionLength(sessionLength) / 60
 
     const longSessionThreshold = 120

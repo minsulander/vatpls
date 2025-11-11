@@ -1,11 +1,26 @@
 <template>
-    <div class="ws-panel">
+    <div v-if="!authorized" class="d-flex align-center mt-8 flex-column">
+        <h1>WS Panel</h1>
+        <h2 class="mb-8">Please login</h2>
+        <v-text-field
+            v-model="password"
+            label="Password"
+            type="password"
+            outlined
+            clearable
+            @keyup.enter="toggleAuthorization"
+            style="width: 33%"
+        />
+        <v-btn @click="toggleAuthorization" color="primary" type="button" rounded style="width: 33%">Authorize</v-btn>
+        <p v-if="errorMessage" class="text-red mt-2">{{ errorMessage }}</p>
+    </div>
+    <div class="ws-panel" v-else>
         <div class="d-flex justify-space-between">
             <h1>WS Panel</h1>
             <div class="d-flex-end mt-2">
                 <v-btn color="#5865f2" @click="openAddControllerDialog">Add Controller</v-btn>
                 <v-btn class="ml-2" @click="openEditControllerDialog">Edit Controller</v-btn>
-                <v-btn class="ml-2">VATDASH</v-btn>
+                <v-btn class="ml-2" @click="openVatdashDialog">VATDASH</v-btn>
             </div>
         </div>
         <v-tabs v-model="tab">
@@ -96,6 +111,27 @@
             :api-base-url="apiBaseUrl"
             @controller-added="handleControllerAdded"
         />
+
+        <!-- VATDASH for editing notepad -->
+        <v-dialog v-model="vatdashDialog" max-width="600">
+            <v-card>
+                <v-card-title>WS Meddelanden</v-card-title>
+                <v-card-text>
+                    <v-textarea
+                        v-model="vatdashContent"
+                        placeholder="Skriv meddelanden här..."
+                        variant="outlined"
+                        rows="10"
+                        auto-grow
+                    ></v-textarea>
+                </v-card-text>
+                <v-card-actions>
+                    <v-spacer></v-spacer>
+                    <v-btn variant="text" @click="closeVatdashDialog">Cancel</v-btn>
+                    <v-btn color="primary" @click="submitVatdashContent">Submit</v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
     </div>
 </template>
 
@@ -142,11 +178,9 @@ interface BlockedTime {
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001"
 document.title = "VATPLS | WS"
 
-// Tab navigation
 const tab = ref(0)
 const tabs = ["Positions", "Controllers", "Callsign"]
 
-// Controller data - history and active sessions
 const controllerEntries = ref<historyController[]>([])
 const activeSessions = ref<Controller[]>()
 const availableSessions = ref<Controller[]>()
@@ -154,32 +188,37 @@ const awaySessions = ref<Controller[]>()
 const savedControllers = ref<smallController[]>([])
 const LatestUpdatedUTC = ref(dayjs.utc())
 
-// Blocked times data
 const blockedTimes = ref<BlockedTime[]>([])
 
-// Filter selections
 const selectedCallsigns = ref<string[]>([])
 const selectedPositions = ref<string[]>([])
 const selectedControllers = ref<string[]>([])
 
-// Chart configuration
 const range = ref([0, 24])
 
-// Block time dialog state
 const blockTimeDialog = ref(false)
 const pendingBlockTime = ref<{ position: string; startTime: number; endTime: number } | null>(null)
 
-// Delete blocked time dialog state
 const deleteBlockedTimeDialog = ref(false)
 const pendingDeleteBlock = ref<BlockedTime | null>(null)
 
-// Edit controller dialog state
 const editControllerDialog = ref(false)
 const pendingEditController = ref<smallController | null>(null)
 
-// Add controller dialog state
 const addControllerDialog = ref(false)
 
+const vatdashDialog = ref(false)
+const vatdashContent = ref("")
+
+const authorized = ref(false)
+const password = ref("")
+const errorMessage = ref("")
+
+function toggleAuthorization() {
+    const envPassword = import.meta.env.VITE_WS_PASSWORD || ""
+    authorized.value = password.value === envPassword
+    if (!authorized.value) errorMessage.value = "Incorrect password"
+}
 // Computed property for all active controllers
 const allActiveControllers = computed(() => [
     ...(activeSessions.value || []),
@@ -958,6 +997,50 @@ function handleEditControllerConfirm(controller: smallController) {
             console.error("Failed to update controller:", err)
             alert(`Failed to update controller: ${err.message}`)
         })
+}
+
+/**
+ * VATDASH notepad functions
+ */
+async function openVatdashDialog() {
+    // Fetch current content from API
+    try {
+        const response = await fetch(`${apiBaseUrl}/api/notepad`)
+        const data = await response.json()
+        vatdashContent.value = data.content || ""
+    } catch (error) {
+        console.error("Error fetching notepad content:", error)
+        vatdashContent.value = ""
+    }
+    vatdashDialog.value = true
+}
+
+function closeVatdashDialog() {
+    vatdashDialog.value = false
+    vatdashContent.value = ""
+}
+
+async function submitVatdashContent() {
+    try {
+        const response = await fetch(`${apiBaseUrl}/api/notepad`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ content: vatdashContent.value }),
+        })
+
+        if (!response.ok) {
+            throw new Error("Failed to update notepad")
+        }
+
+        // Close dialog on success
+        vatdashDialog.value = false
+        console.log("Notepad updated successfully")
+    } catch (error) {
+        console.error("Error updating notepad:", error)
+        alert("Failed to update notepad")
+    }
 }
 </script>
 

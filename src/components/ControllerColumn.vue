@@ -12,13 +12,13 @@
                 <v-card-text class="pa-2">
                     <v-textarea
                         v-model="notepadContent"
-                        placeholder="Notes..."
+                        placeholder="WS meddelanden..."
                         variant="outlined"
                         density="compact"
                         rows="4"
                         hide-details
                         auto-grow
-                        @blur="saveNotepad"
+                        disabled
                     ></v-textarea>
                 </v-card-text>
             </div>
@@ -80,12 +80,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue"
+import { ref, computed, onMounted, onUnmounted } from "vue"
 import { VueDraggable } from "vue-draggable-plus"
 import dayjs from "dayjs"
 import duration from "dayjs/plugin/duration"
 import utc from "dayjs/plugin/utc"
 import timezone from "dayjs/plugin/timezone"
+import { on } from "events"
 
 dayjs.extend(duration)
 dayjs.extend(utc)
@@ -129,20 +130,35 @@ const controllers = computed({
 
 // Notepad functionality
 const notepadContent = ref("")
-const notepadStorageKey = "otherColumnNotepad"
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001"
+let notepadInterval: undefined | NodeJS.Timeout = undefined
+onMounted(async () => {
+    notepadInterval = setInterval(async () => {
+        try {
+            const response = await fetch(`${apiBaseUrl}/api/notepad`)
+            const data = await response.json()
+            notepadContent.value = data.content || ""
+        } catch (error) {
+            console.error("Error fetching notepad content:", error)
+            notepadContent.value = ""
+        }
+    }, 10000)
 
-onMounted(() => {
-    // Load notepad content from localStorage
-    const savedContent = localStorage.getItem(notepadStorageKey)
-    if (savedContent) {
-        notepadContent.value = savedContent
+    try {
+        const response = await fetch(`${apiBaseUrl}/api/notepad`)
+        const data = await response.json()
+        notepadContent.value = data.content || ""
+    } catch (error) {
+        console.error("Error fetching notepad content:", error)
+        notepadContent.value = ""
     }
 })
 
-const saveNotepad = () => {
-    // Save notepad content to localStorage
-    localStorage.setItem(notepadStorageKey, notepadContent.value)
-}
+onUnmounted(() => {
+    if (notepadInterval) {
+        clearInterval(notepadInterval)
+    }
+})
 
 const onUpdate = () => {
     emit("update", controllers.value)
@@ -368,6 +384,7 @@ const getBorderTextColor = (ctrl: Controller) => {
 }
 
 .notepad-card {
+    color: #000;
     background-color: #dce6f5;
     min-height: 100px;
 }

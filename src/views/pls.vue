@@ -1,0 +1,768 @@
+<template>
+    <div v-if="!authorized">
+        <h3>Please login</h3>
+        <v-text-field v-model="password" label="Password" type="password" outlined clearable @keyup.enter="toggleAuthorization" />
+        <v-btn @click="toggleAuthorization" color="primary" type="button">Authorize</v-btn>
+        <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+    </div>
+
+    <v-container fluid class="pa-5 d-flex flex-column" style="height: 100vh">
+        <!-- Button to Add or Remove Controller -->
+        <div class="d-flex flex-row ga-3 mb-3 justify-end">
+            <v-btn @click="showControllerDialog = isAuthorized()" color="primary" variant="tonal"> Start shift </v-btn>
+            <v-btn @click="showDeleteControllerDialog = isAuthorized()" color="error" variant="tonal"> End shift </v-btn>
+        </div>
+
+        <v-row class="d-flex flex-grow-1">
+            <ControllerColumn
+                title="Active"
+                column-type="active"
+                :controllers="activeControllers"
+                :authorized="authorized"
+                container-ref="activeContainer"
+                @update="(controllers: Controller[]) => activeControllers = controllers"
+                @add="onAddPosition"
+                @remove="onRemove"
+                @drag-start="onDragStart"
+                @save-scroll-position="saveScrollPosition"
+            />
+
+            <ControllerColumn
+                title="Break"
+                column-type="break"
+                :controllers="controllerNames"
+                :authorized="authorized"
+                container-ref="breakContainer"
+                @update="(controllers: Controller[]) => controllerNames = controllers"
+                @add="onAddPause"
+                @remove="onRemove"
+                @drag-start="onDragStart"
+                @save-scroll-position="saveScrollPosition"
+            />
+
+            <ControllerColumn
+                title="Other"
+                column-type="other"
+                :controllers="awayControllers"
+                :authorized="authorized"
+                container-ref="otherContainer"
+                @update="(controllers: Controller[]) => awayControllers = controllers"
+                @add="onAddAway"
+                @remove="onRemove"
+                @drag-start="onDragStart"
+                @save-scroll-position="saveScrollPosition"
+            />
+        </v-row>
+
+        <AddControllerDialog
+            v-model="showControllerDialog"
+            :predefined-controllers="predefinedControllers"
+            :all-active-controllers="getAllControllers"
+            :api-base-url="apiBaseUrl"
+            @controller-added="onControllerAdded"
+        />
+
+        <!-- Dialog for Removing an Existing Controller -->
+        <v-dialog v-model="showDeleteControllerDialog" max-width="500">
+            <v-card>
+                <v-card-title>End shift</v-card-title>
+                <v-card-text>
+                    <v-form ref="removeControllerForm" @submit.prevent>
+                        <v-text-field v-model="newController.cid" label="CID" autofocus @keydown.enter="stopSession"></v-text-field>
+                        <p v-if="controllerMatchLogoff()" class="ml-4">{{ foundController?.name }} found</p>
+                        <p v-else-if="newController.cid.length > 0" class="ml-4">Incorrect CID</p>
+                        <v-card-actions>
+                            <v-btn v-if="controllerMatchLogoff()" color="error" @click="stopSession">End shift</v-btn>
+                            <v-btn variant="text" @click=";(showDeleteControllerDialog = false), (newController.cid = '')">Cancel</v-btn>
+                        </v-card-actions>
+                    </v-form>
+                </v-card-text>
+            </v-card>
+        </v-dialog>
+
+        <!-- Dialog for Pause -->
+        <v-dialog v-model="showPauseDialog" max-width="400">
+            <v-card>
+                <v-card-title>Go on break</v-card-title>
+                <v-card-actions>
+                    <v-btn color="primary" @click="confirmPause">Confirm</v-btn>
+                    <v-btn variant="text" @click="cancelAction">Cancel</v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
+
+        <!-- Dialog for selection of Position and Callsign -->
+        <v-dialog v-model="showPositionDialog" max-width="500">
+            <v-card class="position-dialog-card">
+                <v-card-title>Go on position</v-card-title>
+                <v-card-text class="position-dialog-content">
+                    <v-form ref="positionForm" class="position-form">
+                        <v-text-field
+                            v-model="selectedPosition"
+                            label="Position"
+                            @input="updatePositionSelection"
+                            clearable
+                            @click:clear="clearPosition"
+                        ></v-text-field>
+
+                        <v-list class="position-list" ref="positionList">
+                            <template v-for="(group, index) in positionGroups" :key="index">
+                                <v-list-subheader>{{ group.name }}</v-list-subheader>
+                                <v-list-item
+                                    v-for="position in group.positions"
+                                    :key="position"
+                                    :title="position"
+                                    @click="selectedPosition = position"
+                                    :active="selectedPosition.toLowerCase() === position.toLowerCase()"
+                                    :ref="(el: any) => { if (position.toLowerCase() === selectedPosition.toLowerCase()) matchingItemRef = el }"
+                                ></v-list-item>
+                                <v-divider v-if="index < positionGroups.length - 1"></v-divider>
+                            </template>
+                        </v-list>
+
+                        <!-- <v-text-field v-model="selectedCallsign" label="Callsign (if not implied by position)" class="mt-4"></v-text-field> -->
+                        <v-autocomplete
+                            label="Callsign (if not implied by position)"
+                            v-model="selectedCallsign"
+                            :items="CallsignsList"
+                        ></v-autocomplete>
+                    </v-form>
+                </v-card-text>
+                <v-card-actions>
+                    <v-btn color="primary" @click="confirmPosition" :disabled="!isValidPosition"> Confirm </v-btn>
+                    <v-btn variant="text" @click="cancelAction">Cancel</v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
+
+        <!-- Dialog for Away Position -->
+        <v-dialog v-model="showAwayDialog" max-width="500">
+            <v-card>
+                <v-card-title>Go on other (not break/position)</v-card-title>
+                <v-card-text>
+                    <v-text-field v-model="freeTextPositon" label="Note"></v-text-field>
+                </v-card-text>
+                <v-card-actions>
+                    <v-btn color="primary" @click="confirmAway">Confirm</v-btn>
+                    <v-btn @click="cancelAction">Cancel</v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
+    </v-container>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted, computed, nextTick, watch, Ref, ComponentPublicInstance } from "vue"
+import dayjs from "dayjs"
+import duration from "dayjs/plugin/duration"
+import utc from "dayjs/plugin/utc"
+import timezone from "dayjs/plugin/timezone"
+import ControllerColumn from "@/components/ControllerColumn.vue"
+import AddControllerDialog from "@/components/AddControllerDialog.vue"
+
+dayjs.extend(duration)
+dayjs.extend(utc)
+dayjs.extend(timezone)
+
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001"
+
+export interface Controller {
+    name: string
+    sign: string
+    cid: string
+    callsign: string
+    position?: string
+    frequency: string
+    rating: string
+    endorsment: string
+    timestamp: string
+}
+
+// read in from data/callsigns.txt
+import callsigns from "@/assets/callsigns.txt?raw"
+
+const CallsignsList = computed(() => callsigns.split("\n").filter((line) => line.trim() !== ""))
+
+const positions = [
+    "Online",
+    "GG APP",
+    "GG TWR",
+    "GG GND",
+    "GG DEL",
+    "SA TWR",
+    "SA GND",
+    "SA DEL",
+    "SA AD+",
+    "ACC1",
+    "ACC2",
+    "ACC3",
+    "ACC4",
+    "ACC5",
+    "ACC6",
+    "APP1",
+    "APP2",
+    "APP3",
+    "WS",
+    "Ö1",
+    "Ö2",
+]
+
+document.title = "VATPLS"
+
+const positionGroups = ref([
+    {
+        name: "ACC",
+        positions: positions.filter((p) => p.startsWith("ACC")),
+    },
+    {
+        name: "APP",
+        positions: positions.filter((p) => p.startsWith("APP")),
+    },
+    {
+        name: "GG",
+        positions: positions.filter((p) => p.startsWith("GG")),
+    },
+    {
+        name: "SA",
+        positions: positions.filter((p) => p.startsWith("SA")),
+    },
+    {
+        name: "Other",
+        positions: ["Online", "Ö1", "Ö2", "WS"],
+    },
+])
+
+const activeContainer = ref<ComponentPublicInstance | null>(null)
+const breakContainer = ref<ComponentPublicInstance | null>(null)
+const otherContainer = ref<ComponentPublicInstance | null>(null)
+
+const scrollableContainers = {
+    active: activeContainer,
+    break: breakContainer,
+    other: otherContainer,
+}
+
+const showControllerDialog = ref(false)
+const showNewControllerDialog = ref(false)
+const showDeleteControllerDialog = ref(false)
+const showPositionDialog = ref(false)
+const showPauseDialog = ref(false)
+const showAwayDialog = ref(false)
+
+const authorized = ref(false)
+const password = ref("")
+const errorMessage = ref("")
+
+const selectedPosition = ref("")
+const isValidPosition = computed(() => positions.includes(selectedPosition.value))
+
+const selectedCallsign = ref("")
+const freeTextPositon = ref("")
+
+const selectedController = ref<Controller | null>(null)
+const selectedControllerToRemove = ref("")
+
+const foundController = ref<Controller | null>(null)
+
+const activeControllers = ref<Controller[]>([])
+const controllerNames = ref<Controller[]>([])
+const awayControllers = ref<Controller[]>([])
+
+const predefinedControllers = ref<Controller[]>([])
+
+const getAllControllers = computed(() => [...controllerNames.value, ...activeControllers.value, ...awayControllers.value])
+
+const backupActiveControllers = ref<Controller[] | null>(null)
+const backupControllerNames = ref<Controller[] | null>(null)
+const backupAwayControllers = ref<Controller[] | null>(null)
+const backupControllers = ref(false)
+
+const newController = ref({
+    name: "",
+    sign: "",
+    cid: "",
+    callsign: "",
+    position: "",
+    frequency: "",
+    rating: "",
+    endorsment: "",
+    timestamp: dayjs().utc().format(),
+})
+
+const positionList = ref(null as any)
+let matchingItemRef: { $el: any } | null = null
+
+const allPositions = computed(() => positionGroups.value.flatMap((group) => group.positions))
+
+const positionDialog = ref(false)
+
+function controllerMatchLogoff() {
+    const controllersSearch = getAllControllers.value.filter((controller) => controller.cid === newController.value.cid)
+    if (controllersSearch) {
+        foundController.value = controllersSearch[0]
+    }
+
+    return controllersSearch.length > 0
+}
+
+function isAuthorized() {
+    if (authorized.value == true) {
+        return true
+    } else if (localStorage.getItem("authkey") === "true") {
+        return true
+    } else {
+        return false
+    }
+}
+
+/**
+ *
+ * ALL API METHODS
+ *
+ */
+async function toggleAuthorization() {
+    try {
+        const response = await fetch(`${apiBaseUrl}/api/auth`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                password: password.value,
+            }),
+        })
+        const data = await response.json()
+        if (data.authorized == true) {
+            console.log("authorized")
+            authorized.value = true
+            localStorage.setItem("authkey", "true")
+            errorMessage.value = ""
+        } else {
+            errorMessage.value = "Authorization failed. Please try again."
+        }
+    } catch {
+        errorMessage.value = "An error occurred. Please try again."
+    }
+    password.value = "" // Clear password after attempt
+}
+
+async function fetchControllers() {
+    try {
+        const response = await fetch(`${apiBaseUrl}/api/controllers`)
+        const data = await response.json()
+
+        activeControllers.value = data.activeControllers || []
+        controllerNames.value = data.availableControllers || []
+        awayControllers.value = data.awayControllers || []
+    } catch (error) {
+        console.error("Error fetching controller data:", error)
+    }
+
+    sortControllerSessions()
+}
+
+async function fetchPredefinedControllers() {
+    try {
+        const response = await fetch(`${apiBaseUrl}/api/controller/saved`)
+        const data = await response.json()
+
+        predefinedControllers.value = data.Controllers || []
+    } catch (error) {
+        console.error("Error fetching predefined controller data:", error)
+    }
+}
+
+async function saveControllers(movedController: Controller) {
+    try {
+        await fetch(`${apiBaseUrl}/api/controller`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                controller: movedController,
+            }),
+        })
+    } catch (error) {
+        console.error("Error saving controller data:", error)
+    }
+
+    sortControllerSessions()
+}
+
+const deleteControllerAsActive = async (controllerToRemoveCID: string) => {
+    try {
+        await fetch(`${apiBaseUrl}/api/controller/remove`, {
+            method: "DELETE",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                cid: controllerToRemoveCID,
+            }),
+        })
+    } catch (error) {
+        console.error("Error saving controller data:", error)
+    }
+}
+
+/**
+ * OTHER
+ */
+
+function onControllerAdded(controller: Controller) {
+    // Add the controller to the break/pause list
+    controllerNames.value.push(controller)
+    sortControllerSessions()
+}
+
+function stopSession() {
+    const controllerToRemove = getAllControllers.value.find((controller) => controller.cid === newController.value.cid)
+
+    if (controllerToRemove && controllerToRemove.cid) {
+        deleteControllerAsActive(controllerToRemove.cid)
+    }
+
+    if (controllerToRemove && controllerToRemove.cid) {
+        activeControllers.value = activeControllers.value.filter((controller) => controller.cid !== controllerToRemove.cid)
+        controllerNames.value = controllerNames.value.filter((controller) => controller.cid !== controllerToRemove.cid)
+        awayControllers.value = awayControllers.value.filter((controller) => controller.cid !== controllerToRemove.cid)
+
+        // saveControllers(controllerToRemove)
+    }
+
+    newController.value = {
+        name: "",
+        sign: "",
+        cid: "",
+        callsign: "",
+        position: "",
+        frequency: "",
+        rating: "",
+        endorsment: "",
+        timestamp: dayjs.utc().format(),
+    }
+
+    foundController.value = null
+
+    selectedControllerToRemove.value = ""
+    showDeleteControllerDialog.value = false
+}
+
+// TODO: type this correctly? https://developer.mozilla.org/en-US/docs/Web/API/clearInterval#intervalid
+let refreshInterval: string | number | NodeJS.Timeout
+
+// Refresh the displayed time every second
+function refreshTime() {
+    refreshInterval = setInterval(() => {
+        activeControllers.value = [...activeControllers.value]
+        controllerNames.value = [...controllerNames.value]
+        awayControllers.value = [...awayControllers.value]
+    }, 1000)
+}
+
+function onDragStart(controller: Controller) {
+    backupActiveControllers.value = activeControllers.value
+    backupControllerNames.value = controllerNames.value
+    backupAwayControllers.value = awayControllers.value
+
+    selectedController.value = controller
+}
+
+let unsubscribe: undefined | (() => void)
+
+/** used to sync controller cards */
+const subscribe = () => {
+    const updateControllerList = (toUpdate: Ref<Controller[] | null>, newList: Controller[]) => {
+        if (toUpdate.value) {
+            toUpdate.value.length = 0
+            toUpdate.value.push(...newList)
+        }
+    }
+
+    const handleSubscriptionData = (rcvdData: any) => {
+        if (
+            showControllerDialog.value == false &&
+            showNewControllerDialog.value == false &&
+            showDeleteControllerDialog.value == false &&
+            showPositionDialog.value == false &&
+            showPauseDialog.value == false &&
+            showAwayDialog.value == false
+        ) {
+            if (rcvdData.activeControllers) {
+                updateControllerList(activeControllers, rcvdData.activeControllers)
+            }
+            if (rcvdData.availableControllers) {
+                updateControllerList(controllerNames, rcvdData.availableControllers)
+            }
+            if (rcvdData.awayControllers) {
+                updateControllerList(awayControllers, rcvdData.awayControllers)
+            }
+        }
+        sortControllerSessions()
+    }
+
+    const evtSource = new EventSource(`${apiBaseUrl}/subscribe`)
+    evtSource.onmessage = (ev) => {
+        handleSubscriptionData(JSON.parse(ev.data))
+    }
+
+    return () => {
+        evtSource.close()
+    }
+}
+
+// Fetch data from the server when the component is mounted
+onMounted(async () => {
+    fetchControllers()
+    fetchPredefinedControllers()
+    refreshTime()
+    authorized.value = isAuthorized()
+    unsubscribe = subscribe()
+
+    // Add global keydown listener
+    window.addEventListener("keydown", handleDialogueKeypress)
+})
+
+const stopWatch = watch([activeControllers, controllerNames, awayControllers], () => {
+    // Check if data has been loaded. If not, it's not possible to restore scroll position.
+    if (activeControllers.value.length > 0 || controllerNames.value.length > 0 || awayControllers.value.length > 0) {
+        nextTick(() => {
+            Object.keys(scrollableContainers).forEach((bay) => {
+                restoreScrollPosition(bay)
+            })
+            stopWatch() // Stop watching after first trigger
+        })
+    }
+})
+
+onUnmounted(() => {
+    clearInterval(refreshInterval)
+    if (unsubscribe) {
+        unsubscribe()
+    }
+    // Remove global keydown listener
+    window.removeEventListener("keydown", handleDialogueKeypress)
+})
+
+function handleDialogueKeypress(event: KeyboardEvent) {
+    if (event.key === "Enter") {
+        if (showPauseDialog.value) {
+            event.preventDefault()
+            confirmPause()
+        } else if (showPositionDialog.value) {
+            event.preventDefault()
+            confirmPosition()
+        } else if (showAwayDialog.value) {
+            event.preventDefault()
+            confirmAway()
+        }
+    }
+}
+
+function onAddPosition() {
+    backupControllers.value = true
+    showPositionDialog.value = true
+}
+
+function confirmPosition() {
+    if (selectedController.value) {
+        const controller = activeControllers.value.find((controller) => controller.cid === selectedController.value?.cid)
+        if (controller) {
+            controller.position = selectedPosition.value
+            controller.callsign = selectedCallsign.value
+            controller.timestamp = dayjs.utc().format()
+            saveControllers(controller)
+        }
+
+        selectedController.value = null
+        backupControllers.value = false
+
+        selectedPosition.value = ""
+        selectedCallsign.value = ""
+
+        showPositionDialog.value = false
+    }
+}
+
+function onAddPause() {
+    backupControllers.value = true
+    showPauseDialog.value = true
+}
+
+function confirmPause() {
+    if (selectedController.value) {
+        const controller = controllerNames.value.find((controller) => controller.cid === selectedController.value?.cid)
+        if (controller) {
+            controller.callsign = " "
+            controller.position = "pause"
+            controller.timestamp = dayjs.utc().format()
+            saveControllers(controller)
+        }
+
+        showPauseDialog.value = false
+        selectedController.value = null
+        backupControllers.value = false
+    }
+}
+
+function onAddAway() {
+    backupControllers.value = true
+    showAwayDialog.value = true
+}
+
+function confirmAway() {
+    if (selectedController.value) {
+        const controller = awayControllers.value.find((controller) => controller.cid === selectedController.value?.cid)
+        if (controller) {
+            controller.position = "other"
+            controller.callsign = freeTextPositon.value
+            controller.timestamp = dayjs.utc().format()
+            saveControllers(controller)
+        }
+
+        backupControllers.value = false
+        showAwayDialog.value = false
+        selectedController.value = null
+
+        freeTextPositon.value = ""
+    }
+}
+
+function cancelAction() {
+    if (backupControllers.value) {
+        activeControllers.value = backupActiveControllers.value!
+        controllerNames.value = backupControllerNames.value!
+        awayControllers.value = backupAwayControllers.value!
+    }
+
+    backupControllers.value = false
+    selectedController.value = null
+
+    showPauseDialog.value = false
+    showPositionDialog.value = false
+    showAwayDialog.value = false
+
+    freeTextPositon.value = ""
+}
+
+function onRemove() {
+    // backupcontrollers is always true? TODO revisit backupcontrollers
+    if (backupControllers.value) return
+    if (selectedController.value) saveControllers(selectedController.value)
+}
+
+function calculateSessionLength(timestamp: string) {
+    const now = dayjs.utc()
+    const start = dayjs.utc(timestamp)
+    return dayjs.duration(now.diff(start)).asSeconds()
+}
+
+function sortControllerSessions() {
+    activeControllers.value = [...activeControllers.value].sort(
+        (a, b) => calculateSessionLength(a.timestamp) - calculateSessionLength(b.timestamp)
+    )
+    controllerNames.value = [...controllerNames.value].sort(
+        (a, b) => calculateSessionLength(a.timestamp) - calculateSessionLength(b.timestamp)
+    )
+    awayControllers.value = [...awayControllers.value].sort(
+        (a, b) => calculateSessionLength(a.timestamp) - calculateSessionLength(b.timestamp)
+    )
+}
+
+function updatePositionSelection() {
+    const inputLower = selectedPosition.value.toLowerCase()
+    const matchingPosition = allPositions.value.find((pos) => pos.toLowerCase() === inputLower)
+
+    if (matchingPosition) {
+        selectedPosition.value = matchingPosition
+    }
+
+    nextTick(() => {
+        if (matchingItemRef && positionList.value) {
+            const listElement = positionList.value.$el
+            const itemElement = matchingItemRef.$el
+
+            if (itemElement) {
+                listElement.scrollTop = itemElement.offsetTop - listElement.offsetTop
+            }
+        }
+    })
+}
+
+function clearPosition() {
+    selectedPosition.value = ""
+    matchingItemRef = null
+    // Optionally, you can scroll the list back to the top
+    if (positionList.value) {
+        positionList.value.$el.scrollTop = 0
+    }
+}
+
+// Watch for changes in positionDialog
+watch(positionDialog, (newValue) => {
+    if (!newValue) {
+        // Dialog is being closed
+        clearPositionDialog()
+    }
+})
+
+function clearPositionDialog() {
+    selectedPosition.value = ""
+    matchingItemRef = null
+    if (positionList.value) {
+        positionList.value.$el.scrollTop = 0
+    }
+}
+
+const saveScrollPosition = (bay: string) => {
+    const container = scrollableContainers[bay as keyof typeof scrollableContainers]
+    if (container.value?.$el) {
+        localStorage.setItem(`scroll_${bay}`, container.value.$el.scrollTop.toString())
+    }
+}
+
+const restoreScrollPosition = (bay: string) => {
+    nextTick(() => {
+        const container = scrollableContainers[bay as keyof typeof scrollableContainers]
+        if (container.value?.$el) {
+            const savedPosition = localStorage.getItem(`scroll_${bay}`)
+            if (savedPosition) {
+                container.value.$el.scrollTop = parseInt(savedPosition)
+            }
+        }
+    })
+}
+</script>
+
+<style scoped>
+.position-dialog-card {
+    display: flex;
+    flex-direction: column;
+    height: 90vh;
+}
+
+.position-dialog-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.position-form {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.position-list {
+    flex-grow: 1;
+    overflow-y: auto;
+    margin: 10px 0;
+}
+
+.v-card-actions {
+    padding-top: 16px;
+    border-top: 1px solid rgba(0, 0, 0, 0.12);
+}
+</style>

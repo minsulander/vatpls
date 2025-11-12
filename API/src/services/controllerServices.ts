@@ -1,21 +1,26 @@
-import { QueryResult } from "pg";
-import { activeControllers, addController, cid_query, deleteState, query_database, stateChange } from "../db/database";
-import { IActivity, OActivity, SkeletonController, State, Rating, Endorsement, NewController, Controller } from "../types/types";
+import { QueryResult } from "pg"
+import { activeControllers, addController, cid_query, deleteState, query_database, stateChange } from "../db/database"
+import { IActivity, OActivity, SkeletonController, State, Rating, Endorsement, NewController, Controller } from "../types/types"
+import dayjs from "dayjs"
+import utc from "dayjs/plugin/utc"
+
+dayjs.extend(utc)
 
 /** Returns all Active controllers,
  * returns { Controller: row } (row is db rows)
  */
-export async function activeControllersService(): Promise<{ Controllers: Controller[], length: number | null}> {
+export async function activeControllersService(): Promise<{ Controllers: Controller[]; length: number | null }> {
     try {
-        const result = await activeControllers();
-        const len = result.rowCount;
+        const result = await activeControllers()
+        const len = result.rowCount
 
         // Convert to Controller interface
         const fin = result.rows.map((ctrl) => {
             if (ctrl.callsign == undefined) {
-                ctrl.callsign = "pause";
-            } if (ctrl.in_list == "PAUSE" || ctrl.in_list == "OTHER") {
-                ctrl.position = ctrl.in_list;
+                ctrl.callsign = "pause"
+            }
+            if (ctrl.in_list == "PAUSE" || ctrl.in_list == "OTHER") {
+                ctrl.position = ctrl.in_list
             }
 
             return {
@@ -24,61 +29,65 @@ export async function activeControllersService(): Promise<{ Controllers: Control
                 cid: ctrl.cid,
                 rating: ctrl.rating,
                 callsign: ctrl.callsign,
-                frequency: '123.45',
+                frequency: "123.45",
                 position: ctrl.position,
-                timestamp: ctrl.timestamp,
-                endorsment: ctrl.endorsements
-            };
-        });
+                timestamp: dayjs.utc(ctrl.timestamp).format(),
+                endorsment: ctrl.endorsements,
+            }
+        })
 
-        return ({ Controllers: fin, length: len});
-
+        return { Controllers: fin, length: len }
     } catch (error: any) {
         // TODO
-        return error;
-    }   
+        return error
+    }
 }
 
-export async function predefinedControllersService() { 
-    return await query_database(
-        "SELECT cid, controller_name as name, sign, controller_rating as rating FROM controller;"
-    );
+export async function predefinedControllersService() {
+    return await query_database(`
+        SELECT
+            c.cid,
+            c.controller_name AS name,
+            c.sign,
+            c.controller_rating AS rating,
+            COALESCE(array_agg(e.endorsement::text) FILTER (WHERE e.endorsement IS NOT NULL), '{}') AS endorsements
+        FROM controller c
+        LEFT JOIN Endorsements e ON c.cid = e.cid
+        GROUP BY c.cid, c.controller_name, c.sign, c.controller_rating;
+    `)
 }
 
 export async function getControllerStateService(cid: string): Promise<QueryResult<OActivity>> {
-    return await query_database(
-            "SELECT * FROM active WHERE cid = $1;",
-            [cid]
-    );
+    return await query_database("SELECT * FROM active WHERE cid = $1;", [cid])
 }
 
 export async function getControllerByCIDService(cid: string): Promise<QueryResult<SkeletonController> | undefined> {
     try {
-        const result = await cid_query(cid);
-        if (result.rowCount == null || result.rowCount == 0 ) {
-            return undefined;
+        const result = await cid_query(cid)
+        if (result.rowCount == null || result.rowCount == 0) {
+            return undefined
         }
-        return result;
-    } catch(error: any) {
+        return result
+    } catch (error: any) {
         // TODO
-        return undefined;
+        return undefined
     }
 }
 
 export function determineStateService(position: string): State {
     if (!position) {
-        throw Error("Position was undefined.");
+        throw Error("Position was undefined.")
     }
     if (position.toUpperCase() == "PAUSE" || position.toUpperCase() == "BREAK") {
-        return "PAUSE";
+        return "PAUSE"
     } else if (position.toUpperCase() == "OTHER") {
-        return "OTHER";
+        return "OTHER"
     } else {
-        return "ACTIVE";
+        return "ACTIVE"
     }
 }
 
-/** 
+/**
  * Changes the state of a given controller.
  * It will also make sure to "save" the old session.
  **/
@@ -87,11 +96,11 @@ export async function changeStateService(cidToMove: string, position: string, ca
         cid: cidToMove,
         position: position,
         callsign: callsign,
-        in_list: determineStateService(position)
-    };
+        in_list: determineStateService(position),
+    }
 
-    await deleteState(ctrl.cid);
-    return await stateChange(ctrl);
+    await deleteState(ctrl.cid)
+    return await stateChange(ctrl)
 }
 
 /** Add new controller + moves it to pause state */
@@ -99,72 +108,71 @@ export async function createControllerService(cid: string, name: string, sign: s
     // check cid.
     if (6 > cid.length && cid.length > 8) {
         // TODO add error msg.
-        console.error(cid, "CID not valid. The length of cid: ", cid.length);
-        return undefined; // not valid cid must be between 6-7 numbers.
+        console.error(cid, "CID not valid. The length of cid: ", cid.length)
+        return undefined // not valid cid must be between 6-7 numbers.
     }
-    
-    const endorsements = parseEndorsement(endorsement);
+
+    const endorsements = parseEndorsement(endorsement)
 
     const newctrl: NewController = {
         cid: cid,
         name: name,
         sign: sign,
         rating: rating,
-        endorsement: endorsements
+        endorsement: endorsements,
     }
     // add controller to controller table.
-    let createControllerResult;
+    let createControllerResult
     try {
-        createControllerResult = await addController(newctrl);
+        createControllerResult = await addController(newctrl)
     } catch {
-        console.error("controller", cid, "already exists.");
-        return undefined;
+        console.error("controller", cid, "already exists.")
+        return undefined
     }
     if (createControllerResult.rowCount == null || createControllerResult.rowCount < 0) {
-        console.error("failed to add", cid , "not valid.");
-        return undefined;
+        console.error("failed to add", cid, "not valid.")
+        return undefined
     }
 
     // change state to pause.
 
     const firstActivity: IActivity = {
         cid: cid,
-        in_list: "PAUSE"
-    };
-
-    const movePauseResult = await stateChange(firstActivity);
-    if (movePauseResult.rowCount == null || movePauseResult.rowCount < 0) {
-        console.error("failed to move", cid , " to pause");
-        return undefined;
+        in_list: "PAUSE",
     }
 
-    return {created: newctrl};
+    const movePauseResult = await stateChange(firstActivity)
+    if (movePauseResult.rowCount == null || movePauseResult.rowCount < 0) {
+        console.error("failed to move", cid, " to pause")
+        return undefined
+    }
 
+    return { created: newctrl }
 }
 
 /** Parses endorsement string to list of Endorsements. Will return empty if no endorsement given */
-export const parseEndorsement = (endorsement: string | string[]): Endorsement[]  => {
-    const validEndorsements: Endorsement[] = ["T2 APS", "T1 TWR", "T1 APP", "SOLO GG TWR", "SOLO GG APP"];
-    let endorsementls: Endorsement[] = [];
+export const parseEndorsement = (endorsement: string | string[]): Endorsement[] => {
+    const validEndorsements: Endorsement[] = ["T2 APS", "T1 TWR", "T1 APP", "SOLO GG TWR", "SOLO GG APP"]
+    let endorsementls: Endorsement[] = []
 
-    if (typeof(endorsement) === 'string') {
-        validEndorsements.forEach(validEndorsement => {
+    if (typeof endorsement === "string") {
+        validEndorsements.forEach((validEndorsement) => {
             if (endorsement.match(validEndorsement)?.length === 1) {
-                endorsementls.push(validEndorsement);
+                endorsementls.push(validEndorsement)
             }
-        });
+        })
     } else {
-        validEndorsements.forEach(validEndorsement => {
+        validEndorsements.forEach((validEndorsement) => {
             if (endorsement.includes(validEndorsement)) {
-                endorsementls.push(validEndorsement);
+                endorsementls.push(validEndorsement)
             }
-        });
+        })
     }
 
-    return endorsementls;
-};
+    return endorsementls
+}
 
 /** Removes controller as active. CID is checked that its already active */
 export async function removeControllerAsActiveService(removeCID: string) {
-    return deleteState(removeCID);
+    return deleteState(removeCID)
 }

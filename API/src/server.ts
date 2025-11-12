@@ -1,82 +1,128 @@
-import cors from "cors";
-import express from "express";
+import cors from "cors"
+import express from "express"
 
-import controllersRoute from './routes/controllers';
-import activityRoute from "./routes/activity";
-import sessionsRoute from "./routes/sessions";
-import devRoute from "./routes/development";
+import controllersRoute from "./routes/controllers"
+import activityRoute from "./routes/activity"
+import sessionsRoute from "./routes/sessions"
+import devRoute from "./routes/development"
 
-import { getAllControllers } from "./routes/development";
-import { activeControllersService } from "./services/controllerServices";
-import { sortControllers } from "./controllers/controller";
+import { getAllControllers } from "./routes/development"
+import { activeControllersService } from "./services/controllerServices"
+import { sortControllers } from "./controllers/controller"
 
-import { query_database } from "./db/database";
-import authRouter from "./routes/auth";
+import { query_database } from "./db/database"
+import { runMigrations } from "./db/migrate"
+import authRouter from "./routes/auth"
+import historyRoute from "./routes/history"
+import blockedTimeRoute from "./routes/blockedTime"
+import notepadRoute from "./routes/notepad"
 
-const DEV_MODE = false; // set to true if use system without database, otherwise set false.
+const DEV_MODE = false // set to true if use system without database, otherwise set false.
 
-const app = express();
-const port = 3001;
+const app = express()
+const port = 3001
 
-app.use(express.json());
-app.use(cors());
+app.use(express.json())
+app.use(cors())
 
 // Set UTF-8 encoding for all responses
 app.use((req, res, next) => {
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    next();
-});
+    res.setHeader("Content-Type", "application/json; charset=utf-8")
+    next()
+})
 
 if (DEV_MODE) {
-    app.use("/api", devRoute, authRouter);
+    app.use("/api", devRoute, authRouter)
 } else {
-    console.log("database in use");
-    try {
-        query_database("SELECT 1;")
-            .then(() => console.log("Connected to database"))
-            .catch(e => console.error("Database error:", e))
-    } catch (e) {
-        console.error(e);
+    console.log("database in use")
+
+    // Initialize database and run migrations
+    const initializeDatabase = async () => {
+        try {
+            // Test database connection
+            await query_database("SELECT 1;")
+            console.log("Connected to database")
+
+            await runMigrations()
+        } catch (e) {
+            console.error("Database setup error:", e)
+            process.exit(1)
+        }
     }
-    app.use("/api", controllersRoute, authRouter);
-    app.use("/api", sessionsRoute);
+
+    initializeDatabase()
+
+    app.use("/api", controllersRoute, authRouter)
+    app.use("/api", sessionsRoute)
+    app.use("/api", historyRoute)
+    app.use("/api", blockedTimeRoute)
+    app.use("/api", notepadRoute)
     //app.use("/api", activityRoute);
 }
 
-/** 
+/**
  * Synchronizing controller cards
  * TODO: only send updates when updates happen.
  */
-app.get('/subscribe', async (req, res) => {
+app.get("/subscribe", async (req, res) => {
     res.set({
-        'Cache-Control': 'no-cache',
-        'Content-Type': 'text/event-stream',
-        'Connection': 'keep-alive'
-    });
+        "Cache-Control": "no-cache",
+        "Content-Type": "text/event-stream",
+        Connection: "keep-alive",
+    })
 
     let connection = "open"
-    console.log("Client connected.");
-    req.on('close', () => {
-        console.log("Client disconnect.");
+    console.log("Client connected.")
+    req.on("close", () => {
+        console.log("Client disconnect.")
         connection = "closed"
-        res.end();
-    });
+        res.end()
+    })
 
-    res.write('retry: 10000\n\n');
+    res.write("retry: 10000\n\n")
 
     while (true) {
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        await new Promise((resolve) => setTimeout(resolve, 5000))
 
-        const ctrlData = sortControllers(await activeControllersService());
+        const ctrlData = sortControllers(await activeControllersService())
         if (ctrlData) {
-            res.write(`data: ${JSON.stringify(ctrlData)}\n\n`);
+            res.write(`data: ${JSON.stringify(ctrlData)}\n\n`)
         }
 
-        if (connection == "closed") break;
+        if (connection == "closed") break
     }
-});
+})
+
+app.get("/subscribe-long", async (req, res) => {
+    res.set({
+        "Cache-Control": "no-cache",
+        "Content-Type": "text/event-stream",
+        Connection: "keep-alive",
+    })
+
+    let connection = "open"
+    console.log("Long client connected.")
+    req.on("close", () => {
+        console.log("Long client disconnect.")
+        connection = "closed"
+        res.end()
+    })
+
+    res.write("retry: 10000\n\n")
+
+    while (true) {
+        await new Promise((resolve) => setTimeout(resolve, 10000))
+
+        const ctrlData = sortControllers(await activeControllersService())
+        if (ctrlData) {
+            res.write(`data: ${JSON.stringify(ctrlData)}\n\n`)
+        }
+
+        if (connection == "closed") break
+    }
+})
 
 // Start the server
 app.listen(port, async () => {
-    console.log(`Server is running on http://localhost:${port}`);
-});
+    console.log(`Server is running on http://localhost:${port}`)
+})

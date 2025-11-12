@@ -12,10 +12,10 @@ npm install
 npm run build
 cd ..
 
-mkdir -p build
+mkdir -p build/src
 cp -r API/build build/
 cp -r API/node_modules build/
-cp -r API/src/migrations build/
+cp -r API/src/migrations build/src/
 
 rm -f plsapi.zip
 cd build
@@ -25,10 +25,10 @@ cd ..
 scp plsapi.zip $user@$host:
 ssh $user@$host unzip -o plsapi.zip -d plsapi
 
-scp scripts/plsapi.service $user@$host:
-ssh $user@$host "sudo mv ~/plsapi.service /etc/systemd/system/plsapi.service"
-ssh $user@$host "sudo systemctl daemon-reload"
-ssh $user@$host "sudo systemctl enable plsapi"
+# scp scripts/plsapi.service $user@$host:
+# ssh $user@$host "sudo mv ~/plsapi.service /etc/systemd/system/plsapi.service"
+# ssh $user@$host "sudo systemctl daemon-reload"
+# ssh $user@$host "sudo systemctl enable plsapi"
 
 ssh $user@$host "sudo systemctl restart plsapi"
 

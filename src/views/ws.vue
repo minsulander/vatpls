@@ -144,6 +144,7 @@ import EditControllerDialog from "@/components/EditControllerDialog.vue"
 import AddControllerDialog from "@/components/AddControllerDialog.vue"
 import dayjs from "dayjs"
 import utc from "dayjs/plugin/utc"
+import randomColor from "randomcolor"
 import type { Controller } from "@/views/pls.vue"
 dayjs.extend(utc)
 
@@ -357,12 +358,14 @@ watch(
 
 // Use consistent colors for each CID across all tabs
 const controllerColors: { [key: string]: string } = {}
-const availableColors = ["#ff6b6b", "#4ecdc4", "#45b7d1", "#96ceb4", "#ffeaa7", "#dda0dd", "#98d8c8", "#f39c12", "#e74c3c", "#9b59b6"]
 
 function getControllerColor(cid: string): string {
     if (!controllerColors[cid]) {
-        const colorIndex = Object.keys(controllerColors).length % availableColors.length
-        controllerColors[cid] = availableColors[colorIndex]
+        controllerColors[cid] = randomColor({
+            luminosity: "light",
+            format: "hex",
+            seed: cid,
+        })
     }
     return controllerColors[cid]
 }
@@ -633,7 +636,7 @@ const chartOptions = computed(() => {
                     if (durationMs >= hideThreshold) return `${context.dataset.label}`
                     return ""
                 },
-                color: "#e0e0e0",
+                color: "#2b2b2b",
                 font: {
                     size: 8,
                     weight: "bold",

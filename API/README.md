@@ -1,6 +1,6 @@
 The VATPLS api runs on a **postgres** database and uses **pgadmin** to make server administration more easy. These services are run in a container and therefore requires:
 
-- Docker compose.
+-   Docker compose.
 
 Launching the database:
 
@@ -18,9 +18,11 @@ PGDATABASE=vatpls
 PLS_PASSWORD={enter password}
 ```
 
+For your ease, there is an .env.example file provided that can be copied and renamed to `.env`.
+
 PLS PASSWORD defaults to 'test'.
 
-(You can change any of these values)
+(You can change any of these values... and you should!).
 
 2. run `docker compose up`, this will download the database, initialize it and also launch it.
 

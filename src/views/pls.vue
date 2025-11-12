@@ -594,6 +594,7 @@ function confirmPause() {
     if (selectedController.value) {
         const controller = controllerNames.value.find((controller) => controller.cid === selectedController.value?.cid)
         if (controller) {
+            controller.callsign = " "
             controller.position = "pause"
             controller.timestamp = dayjs.utc().format()
             saveControllers(controller)
@@ -646,11 +647,9 @@ function cancelAction() {
 }
 
 function onRemove() {
+    // backupcontrollers is always true? TODO revisit backupcontrollers
     if (backupControllers.value) return
-
-    if (selectedController.value) {
-        saveControllers(selectedController.value)
-    }
+    if (selectedController.value) saveControllers(selectedController.value)
 }
 
 function calculateSessionLength(timestamp: string) {

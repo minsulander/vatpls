@@ -1,5 +1,5 @@
 <template>
-    <div v-if="!authorized" class="d-flex align-center mt-8 flex-column">
+    <div v-if="authorized" class="d-flex align-center mt-8 flex-column">
         <h1>WS Panel</h1>
         <h2 class="mb-8">Please login</h2>
         <v-text-field
@@ -571,6 +571,10 @@ const filteredControllers = computed(() => {
     return controllers.value.filter((c) => selectedControllers.value.includes(c))
 })
 
+const filteredControllersName = computed(() => {
+    return savedControllers.value.filter((c) => selectedControllers.value.includes(c.cid)).map((c) => `${c.name}`)
+})
+
 // chartjs data format
 const chartData2 = computed(() => {
     //positions (actual real positions) ACC1, APP1 etc
@@ -585,7 +589,7 @@ const chartData2 = computed(() => {
     else if (tab.value === 1) {
         const datasets = generateControllersDatasets(controllerEntries.value)
         return {
-            labels: filteredControllers.value,
+            labels: filteredControllersName.value,
             datasets: datasets,
         }
     }
@@ -620,7 +624,7 @@ const chartOptions = computed(() => {
                         const end = value[1]
                         const hideForMinutes = 10
 
-                        if (end - start > 1000 * 60 * hideForMinutes) return `${context.chart.data.labels[context.dataIndex]}`
+                        if (end - start > 1000 * 60 * hideForMinutes) return `${context.dataset.label}`
                     }
                     return ""
                 },

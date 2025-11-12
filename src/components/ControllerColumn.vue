@@ -26,6 +26,7 @@
             <!-- Draggable Controllers -->
             <VueDraggable
                 class="d-flex flex-column gap-2"
+                style="min-height: 200px; flex: 1"
                 v-model="controllers"
                 :animation="100"
                 ghostClass="ghost"
@@ -86,7 +87,6 @@ import dayjs from "dayjs"
 import duration from "dayjs/plugin/duration"
 import utc from "dayjs/plugin/utc"
 import timezone from "dayjs/plugin/timezone"
-import { on } from "events"
 
 dayjs.extend(duration)
 dayjs.extend(utc)

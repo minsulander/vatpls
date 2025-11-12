@@ -1,5 +1,5 @@
 <template>
-    <div v-if="authorized" class="d-flex align-center mt-8 flex-column">
+    <div v-if="!authorized" class="d-flex align-center mt-8 flex-column">
         <h1>WS Panel</h1>
         <h2 class="mb-8">Please login</h2>
         <v-text-field
@@ -216,8 +216,25 @@ const errorMessage = ref("")
 
 function toggleAuthorization() {
     const envPassword = import.meta.env.VITE_WS_PASSWORD || ""
-    authorized.value = password.value === envPassword
-    if (!authorized.value) errorMessage.value = "Incorrect password"
+    if (password.value === envPassword) {
+        authorized.value = true
+        // TODO move this auth to server side.. but good enough for now
+        try {
+            localStorage.setItem("ws-auth", password.value)
+        } catch (e) {
+            console.warn("error retrieving password")
+        }
+        errorMessage.value = ""
+    } else {
+        authorized.value = false
+        errorMessage.value = "Incorrect password"
+        try {
+            localStorage.removeItem("ws-auth")
+        } catch (e) {
+            console.warn("error retrieving password")
+        }
+    }
+    password.value = ""
 }
 // Computed property for all active controllers
 const allActiveControllers = computed(() => [
@@ -398,31 +415,16 @@ function generatePositionsDatasets(sessions: historyController[], usePositions: 
         userSessions.forEach((session) => {
             let data: any[]
 
-            if (usePositions) {
-                // Positions view - map against positions
-                data = positions.value.map((position) => {
-                    if (position === session.position) {
-                        const startTime =
-                            typeof session.session_start === "number" ? session.session_start : dayjs.utc(session.session_start).valueOf()
-                        const endTime =
-                            typeof session.session_end === "number" ? session.session_end : dayjs.utc(session.session_end).valueOf()
-                        return [startTime, endTime]
-                    }
-                    return null
-                })
-            } else {
-                // Callsigns view - map against callsigns
-                data = callsigns.value.map((callsign) => {
-                    if (callsign === session.callsign) {
-                        const startTime =
-                            typeof session.session_start === "number" ? session.session_start : dayjs.utc(session.session_start).valueOf()
-                        const endTime =
-                            typeof session.session_end === "number" ? session.session_end : dayjs.utc(session.session_end).valueOf()
-                        return [startTime, endTime]
-                    }
-                    return null
-                })
-            }
+            const labels = usePositions ? filteredPositions.value : filteredCallsigns.value
+            data = labels.map((label) => {
+                if ((usePositions && label === session.position) || (!usePositions && label === session.callsign)) {
+                    const startTime =
+                        typeof session.session_start === "number" ? session.session_start : dayjs.utc(session.session_start).valueOf()
+                    const endTime = typeof session.session_end === "number" ? session.session_end : dayjs.utc(session.session_end).valueOf()
+                    return [startTime, endTime]
+                }
+                return null
+            })
 
             datasets.push({
                 label: `${userKey}`,
@@ -433,27 +435,16 @@ function generatePositionsDatasets(sessions: historyController[], usePositions: 
     })
 
     blockedTimes.value.forEach((blockedTime) => {
-        let data: any[]
         const startTime = blockedTime.blocked_start
         const endTime = blockedTime.blocked_end
+        const labels = usePositions ? filteredPositions.value : filteredCallsigns.value
 
-        if (usePositions) {
-            // Positions view - map against positions
-            data = positions.value.map((position) => {
-                if (position === blockedTime.position) {
-                    return [startTime, endTime]
-                }
-                return null
-            })
-        } else {
-            // Callsigns view - map against callsigns
-            data = callsigns.value.map((callsign) => {
-                if (callsign === blockedTime.position) {
-                    return [startTime, endTime]
-                }
-                return null
-            })
-        }
+        const data = labels.map((label) => {
+            if (label === blockedTime.position) {
+                return [startTime, endTime]
+            }
+            return null
+        })
 
         datasets.push({
             label: `BLOCKED-${blockedTime.block_id}`,
@@ -513,8 +504,11 @@ function generateControllersDatasets(sessions: historyController[]) {
 
         sessionsByPosition.forEach((positionSessions, position) => {
             positionSessions.forEach((session) => {
-                const data = controllers.value.map((controllerCid) => {
-                    if (controllerCid === session.cid) {
+                const labels = filteredControllersName.value
+                const data = labels.map((label) => {
+                    const saved = savedControllers.value.find((c) => `${c.name}` === label)
+                    if (!saved) return null
+                    if (saved.cid === session.cid) {
                         const startTime =
                             typeof session.session_start === "number" ? session.session_start : dayjs.utc(session.session_start).valueOf()
                         const endTime =
@@ -535,8 +529,11 @@ function generateControllersDatasets(sessions: historyController[]) {
 
     // Add blocked times as separate datasets
     blockedTimes.value.forEach((blockedTime) => {
-        const data = controllers.value.map((controllerCid) => {
-            if (controllerCid === blockedTime.cid) {
+        const labels = filteredControllersName.value
+        const data = labels.map((label) => {
+            const saved = savedControllers.value.find((c) => `${c.name}` === label)
+            if (!saved) return null
+            if (saved.cid === blockedTime.cid) {
                 const startTime = blockedTime.blocked_start
                 const endTime = blockedTime.blocked_end
                 return [startTime, endTime]
@@ -617,15 +614,23 @@ const chartOptions = computed(() => {
         indexAxis: "y" as const,
         plugins: {
             datalabels: {
+                clamp: true,
+                clip: true,
+                anchor: "center",
+                align: "center",
                 formatter: function (value: any, context: any) {
-                    if (Array.isArray(value) && value.length === 2) {
-                        // TODO hide label on very small bars
-                        const start = value[0]
-                        const end = value[1]
-                        const hideForMinutes = 10
+                    if (!Array.isArray(value) || value.length !== 2) return ""
+                    const start = value[0]
+                    const end = value[1]
+                    const durationMs = end - start
 
-                        if (end - start > 1000 * 60 * hideForMinutes) return `${context.dataset.label}`
+                    const datasetLabel: string | undefined = context.dataset && context.dataset.label
+                    if (datasetLabel && datasetLabel.startsWith("BLOCKED-")) {
+                        return datasetLabel
                     }
+
+                    const hideThreshold = 5 * 60 * 1000 // 5 minutes
+                    if (durationMs >= hideThreshold) return `${context.dataset.label}`
                     return ""
                 },
                 color: "#e0e0e0",
@@ -844,6 +849,16 @@ const refresh = async () => {
 }
 
 onMounted(async () => {
+    try {
+        const stored = localStorage.getItem("ws-auth")
+        const envPassword = import.meta.env.VITE_WS_PASSWORD || ""
+        if (stored && stored === envPassword) {
+            authorized.value = true
+        }
+    } catch (e) {
+        console.warn("error retrieving password")
+    }
+
     LatestUpdatedUTC.value = dayjs.utc()
     // latest passed hour
     const closestHour = dayjs.utc().startOf("hour").add(-1, "hour")
@@ -894,15 +909,23 @@ function handleClickBlockedTime(payload: { blockId: number }) {
 }
 
 function handleBlockTimeConfirm(payload: { position: string; startTime: number; endTime: number; reason: string; notes: string }) {
-    // In Controllers tab, payload.position is the CID
-    const cid = payload.position
+    // TODO fix the naming and stuff
+    // In Controllers tab, payload.position is the the name...
+    const foundcid = savedControllers.value.find((val) => {
+        return val.name == payload.position ? true : false
+    })
+
+    if (!foundcid) {
+        alert("could not find the correct cid")
+        return
+    }
 
     fetch(`${apiBaseUrl}/api/blocked-time`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-            cid: cid,
-            position: payload.position, // Store CID as position for Controllers tab
+            cid: foundcid.cid,
+            position: payload.position,
             blocked_start: dayjs.utc(payload.startTime).toISOString(),
             blocked_end: dayjs.utc(payload.endTime).toISOString(),
             reason: payload.reason,

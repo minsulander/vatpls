@@ -236,14 +236,14 @@ const parseEndorsment = (endorsementStr: string | string[], rating: string) => {
         return " "
     }
 
-    const validEndorsements = ["T2 APS", "T1 TWR", "T1 APP", "SOLO GG TWR", "SOLO GG APP"]
+    const validEndorsements = ["T2 APS", "T1 TWR", "T1 APP", "SOLO GG TWR", "SOLO GG APP", "SOLO MM"]
     let strmatches = validEndorsements.filter((endorsement) => endorsementStr.match(endorsement)?.length === 1)
 
     if (rating === "S3") {
         if (strmatches.includes("T1 APP")) {
-            strmatches = strmatches.filter((val) => val === "T1 APP")
+            strmatches = strmatches.filter((val) => val === "T1 APP" || val === "SOLO MM")
         } else {
-            strmatches = strmatches.filter((val) => val === "T1 APP" || val === "T1 TWR")
+            strmatches = strmatches.filter((val) => val === "T1 APP" || val === "T1 TWR" || val === "SOLO MM")
         }
     }
 

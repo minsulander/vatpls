@@ -111,7 +111,7 @@ const emit = defineEmits<{
 }>()
 
 const ratings = ["S1", "S2", "S3", "C1"]
-const endorsments = ["NIL", "T2 APS", "T1 TWR", "T1 APP", "SOLO GG TWR", "SOLO GG APP"]
+const endorsments = ["NIL", "T2 APS", "T1 TWR", "T1 APP", "SOLO GG TWR", "SOLO GG APP", "SOLO MM"]
 
 const localShowDialog = computed({
     get: () => props.modelValue,

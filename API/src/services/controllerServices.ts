@@ -152,7 +152,7 @@ export async function createControllerService(cid: string, name: string, sign: s
 
 /** Parses endorsement string to list of Endorsements. Will return empty if no endorsement given */
 export const parseEndorsement = (endorsement: string | string[]): Endorsement[] => {
-    const validEndorsements: Endorsement[] = ["T2 APS", "T1 TWR", "T1 APP", "SOLO GG TWR", "SOLO GG APP"]
+    const validEndorsements: Endorsement[] = ["T2 APS", "T1 TWR", "T1 APP", "SOLO GG TWR", "SOLO GG APP", "SOLO MM"]
     let endorsementls: Endorsement[] = []
 
     if (typeof endorsement === "string") {

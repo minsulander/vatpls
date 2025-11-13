@@ -84,7 +84,7 @@ const emit = defineEmits<{
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001"
 const ratings = ["OBS", "S1", "S2", "S3", "C1", "C3", "I1", "I3"]
-const availableEndorsements = ["T1 APP", "T2 APS", "T1 TWR", "SOLO GG TWR", "SOLO GG APP"]
+const availableEndorsements = ["T1 APP", "T2 APS", "T1 TWR", "SOLO GG TWR", "SOLO GG APP", "SOLO MM"]
 const allControllers = ref<Controller[]>([])
 
 const localController = ref<Controller>({

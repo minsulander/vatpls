@@ -35,6 +35,7 @@
                 @update="onUpdate"
                 @add="onAdd"
                 @remove="onRemove"
+                @start="onDragStartEvent"
             >
                 <div
                     v-for="controller in controllers"
@@ -45,7 +46,6 @@
                         'ws-card': controller.callsign?.toLowerCase().startsWith('ws'),
                     }"
                     :style="getBorderColor(controller)"
-                    @dragstart="onDragStart(controller)"
                 >
                     <div class="controller-rating" :style="getBorderTextColor(controller)">{{ controller.rating }}</div>
                     <v-card-text class="pa-1">
@@ -172,8 +172,11 @@ const onRemove = () => {
     emit("remove")
 }
 
-const onDragStart = (controller: Controller) => {
-    emit("dragStart", controller)
+const onDragStartEvent = (evt: any) => {
+    const controller = controllers.value[evt.oldIndex]
+    if (controller) {
+        emit("dragStart", controller)
+    }
 }
 
 const saveScrollPosition = (columnType: string) => {

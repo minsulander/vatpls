@@ -6,7 +6,7 @@
                 <v-container>
                     <v-row>
                         <v-col cols="12">
-                            <v-select
+                            <v-autocomplete
                                 v-model="localController.cid"
                                 label="Select Controller"
                                 :items="controllerItems"
@@ -15,7 +15,7 @@
                                 variant="outlined"
                                 density="compact"
                                 @update:model-value="onControllerSelect"
-                            ></v-select>
+                            ></v-autocomplete>
                         </v-col>
                         <v-col cols="12">
                             <v-text-field v-model="localController.name" label="Name" variant="outlined" density="compact"></v-text-field>

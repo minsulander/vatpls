@@ -6,6 +6,10 @@ dotenv.config()
 
 const pool = new Pool()
 
+export const closeDatabase = async () => {
+    await pool.end()
+}
+
 const handleQueryError = (e: Error, query: string, params: any[] | undefined) => {
     console.error(`Error executing query: ${query} with params: ${params}`)
     console.error(e)
@@ -63,7 +67,7 @@ export const activeControllers = async (): Promise<QueryResult<OActive>> => {
             active.position,
             active.session_start,
             active.in_list;
-        `
+        `,
     )
 }
 
@@ -128,8 +132,6 @@ export const removeController = async (cid: string) => {
 export const moveController = async (cid: string) => {}
 
 export const stateChange = async (ctrl: IActivity) => {
-    const time = query_database("SELECT NOW()")
-    console.log((await time).rows)
     if (ctrl.callsign && ctrl.position) {
         return query_database("INSERT INTO active VALUES ($1, $2, $3, NOW(), $4)", [ctrl.cid, ctrl.callsign, ctrl.position, ctrl.in_list])
     } else if (ctrl.callsign) {
@@ -156,7 +158,7 @@ export const createBlockedTime = async (data: NewBlockedTime): Promise<QueryResu
         `INSERT INTO BlockedTime (cid, position, blocked_start, blocked_end, reason, notes)
          VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING *;`,
-        [data.cid, data.position, data.blocked_start, data.blocked_end, data.reason, data.notes || null]
+        [data.cid, data.position, data.blocked_start, data.blocked_end, data.reason, data.notes || null],
     )
 }
 
@@ -175,7 +177,7 @@ export const getBlockedTimes = async (date?: string): Promise<QueryResult<Blocke
              FROM BlockedTime
              WHERE blocked_start::date = $1::date OR blocked_end::date = $1::date
              ORDER BY blocked_start;`,
-            [date]
+            [date],
         )
     } else {
         return query_database(
@@ -189,7 +191,7 @@ export const getBlockedTimes = async (date?: string): Promise<QueryResult<Blocke
                 notes,
                 created_at AT TIME ZONE 'UTC' as created_at
              FROM BlockedTime
-             ORDER BY blocked_start;`
+             ORDER BY blocked_start;`,
         )
     }
 }

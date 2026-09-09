@@ -15,17 +15,18 @@ Contributions of any kind are most welcome.
 
 ## For developers
 
-It's a fairly straight-forward [Vue3](https://vuejs.org) + [Vuetify](https://vuetifyjs.com) + [Vue-draggable-plus](https://github.com/Alfred-Skyblue/vue-draggable-plus) project.
+The repository contains two independently installable applications: the Vue frontend in `web/` and the Express backend in `api/`.
 
 ### Frontend
 
-The frontend requires an env variable to be set. Copy the `.env.example` file, rename it to `.env`, and change the password to your desired value. This password is used to login in the ws panel. Then install and start the frontend:
+The frontend requires an env variable to be set. From `web/`, copy `.env.example` to `.env` and change the password to your desired value. This password is used to log in to the WS panel. Then install and start the frontend:
 
 ```sh
+cd web
 npm install
 npm start
 ```
 
 ### Backend
 
-The backend API must be run separately using the provided PostgreSQL Docker image. Detailed setup instructions are available in the API/ directory.
+The backend must be run separately using the provided PostgreSQL Docker image. Detailed setup instructions are available in [`api/`](api/README.md).

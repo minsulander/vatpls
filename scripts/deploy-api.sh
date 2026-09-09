@@ -3,19 +3,19 @@
 user=main
 host=backend.vatiris.se
 
-cd "$(dirname $0)/.."
+cd "$(dirname "$0")/.."
 
-rm -rf build API/build
+rm -rf build api/build
 
-cd API
+cd api
 npm install
 npm run build
 cd ..
 
 mkdir -p build/src
-cp -r API/build build/
-cp -r API/node_modules build/
-cp -r API/src/migrations build/src/
+cp -r api/build build/
+cp -r api/node_modules build/
+cp -r api/src/migrations build/src/
 
 rm -f plsapi.zip
 cd build

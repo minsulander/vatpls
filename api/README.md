@@ -4,7 +4,7 @@ The VATPLS api runs on a **postgres** database and uses **pgadmin** to make serv
 
 Launching the database:
 
-1. navigate to /API folder and copy following to a .env file:
+1. Navigate to the `api/` folder and copy the following to a `.env` file:
 
 ```
 POSTGRES_PASSWORD=password

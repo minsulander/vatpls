@@ -1,7 +1,7 @@
 .DS_Store
 node_modules
-/dist
-/dev-dist
+web/dist
+web/dev-dist
 
 # local env files
 .env.local
@@ -26,7 +26,7 @@ pnpm-debug.log*
 tsconfig.tsbuildinfo
 test-result*.xml
 run API.bat
-API/build
+api/build
 /build
 
 # euroscope ese

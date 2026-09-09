@@ -1,27 +1,29 @@
 build:
   image: node:20-slim
   script:
+    - cd web
     - npm install
     - npm run build
   artifacts:
     paths:
-      - dist
+      - web/dist
     expire_in: 1 week
   cache:
     key: "$CI_JOB_NAME-$CI_COMMIT_REF_SLUG"
     paths:
-      - node_modules
+      - web/node_modules
 
 test:
   image: node:20-slim
   script:
+    - cd web
     - npm install
     - npx vitest run --reporter=junit --outputFile=./test-result.xml
   artifacts:
     reports:
       junit:
-        - test-result.xml
+        - web/test-result.xml
   cache:
     key: "$CI_JOB_NAME-$CI_COMMIT_REF_SLUG"
     paths:
-      - node_modules
+      - web/node_modules

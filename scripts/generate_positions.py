@@ -5,7 +5,7 @@ Creates valid positions for vatpls from a .ese file. Only really needs to be run
 
 1. Place the .ese file in the same folder as this script. It should start with ESAA and end with .ese
 2. Run the script
-3. The available positions will be saved in ../src/data/positions.txt
+3. The available positions will be saved in ../web/src/assets/callsigns.txt
 '''
 
 from dataclasses import dataclass
@@ -75,7 +75,8 @@ class Position:
 
 def main():
     # Specify the directory path
-    directory = '.'
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+    directory = script_directory
 
     # List all file names (excluding directories)
     files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
@@ -120,11 +121,8 @@ def main():
         )
         positions.append(position)
 
-    # if not os.path.exists("../src/data"):
-    #     os.makedirs("../src/data")
-    #     print("Created directory ../src/data")
-
-    file = open("../src/assets/callsigns.txt", "w")
+    output_path = os.path.join(script_directory, "..", "web", "src", "assets", "callsigns.txt")
+    file = open(output_path, "w")
     count = 0
     for c in positions :
         if (c.position_name() is not None):
@@ -132,7 +130,7 @@ def main():
             count += 1
     file.close()
 
-    print("saved a total of", count, "positions to ../src/assets/callsigns.txt")
+    print("saved a total of", count, "positions to", output_path)
 
 if __name__ == "__main__":
     main()

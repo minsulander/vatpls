@@ -14,6 +14,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger
+DROP TRIGGER IF EXISTS after_delete_trigger ON active;
+
 CREATE TRIGGER after_delete_trigger
 AFTER DELETE ON active
 FOR EACH ROW

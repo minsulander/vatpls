@@ -36,28 +36,18 @@ if (DEV_MODE) {
 } else {
     console.log("database in use")
 
-    // Initialize database and run migrations
-    const initializeDatabase = async () => {
-        try {
-            // Test database connection
-            await query_database("SELECT 1;")
-            console.log("Connected to database")
-
-            await runMigrations()
-        } catch (e) {
-            console.error("Database setup error:", e)
-            process.exit(1)
-        }
-    }
-
-    initializeDatabase()
-
     app.use("/api", controllersRoute, authRouter)
     app.use("/api", sessionsRoute)
     app.use("/api", historyRoute)
     app.use("/api", blockedTimeRoute)
     app.use("/api", notepadRoute)
     //app.use("/api", activityRoute);
+}
+
+export const initializeDatabase = async (): Promise<void> => {
+    await query_database("SELECT 1;")
+    console.log("Connected to database")
+    await runMigrations()
 }
 
 /**
@@ -122,7 +112,25 @@ app.get("/subscribe-long", async (req, res) => {
     }
 })
 
-// Start the server
-app.listen(port, async () => {
-    console.log(`Server is running on http://localhost:${port}`)
-})
+export const startServer = async (): Promise<void> => {
+    if (!DEV_MODE) {
+        await initializeDatabase()
+    }
+
+    await new Promise<void>((resolve, reject) => {
+        const server = app.listen(port)
+        server.once("error", reject)
+        server.once("listening", () => {
+            server.off("error", reject)
+            console.log(`Server is running on http://localhost:${port}`)
+            resolve()
+        })
+    })
+}
+
+if (require.main === module) {
+    void startServer().catch((error) => {
+        console.error("Server startup failed:", error)
+        process.exit(1)
+    })
+}

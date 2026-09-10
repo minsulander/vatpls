@@ -10,6 +10,8 @@ BEGIN
 END
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS give_c1_endorsement ON Controller;
+
 CREATE TRIGGER give_c1_endorsement
 AFTER INSERT ON Controller
 FOR EACH ROW

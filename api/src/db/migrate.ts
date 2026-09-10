@@ -1,65 +1,79 @@
 import { readFileSync, readdirSync } from "fs"
+import { createHash } from "crypto"
 import { join } from "path"
-import { query_database } from "./database"
+import { TransactionClient, withTransaction } from "./database"
 
-/**
- * easy migration runner, just runs all .sql files not very good system...
- */
-export const runMigrations = async (): Promise<void> => {
-    try {
-        // create table to keep track, OBS ta bort gamla tabellen...
-        await query_database(`
-            CREATE TABLE IF NOT EXISTS _migrations_run (
-                filename VARCHAR(255) PRIMARY KEY,
-                run_at TIMESTAMP DEFAULT NOW()
-            );
-        `)
+type AppliedMigration = {
+    filename: string
+    checksum: string | null
+}
 
-        console.log("Running migrations...")
+type MigrationOptions = {
+    migrationsDirectory?: string
+    transaction?: typeof withTransaction
+}
 
-        // get all sql files
-        const migrationsDir = join(process.cwd(), "src/migrations")
-        const migrationFiles = readdirSync(migrationsDir)
-            .filter((file) => file.endsWith(".sql"))
-            .sort()
+const checksum = (sql: string): string => createHash("sha256").update(sql).digest("hex")
 
-        // check database what has been run
-        const result = await query_database("SELECT filename FROM _migrations_run")
-        const runMigrations = new Set(result.rows.map((row: any) => row.filename))
+const migrationFilesIn = (directory: string): string[] =>
+    readdirSync(directory)
+        .filter((file) => file.endsWith(".sql"))
+        .sort()
 
-        // Run each migration not runned  already
-        let newMigrationsCount = 0
-        for (const file of migrationFiles) {
-            if (runMigrations.has(file)) {
-                console.log(`Skipping migration (already run): ${file}`)
-                continue
+const migrate = async (client: TransactionClient, migrationsDirectory: string): Promise<number> => {
+    // Only one application instance may inspect and update migration history at a time.
+    await client.query("SELECT pg_advisory_xact_lock(hashtext('vatpls:migrations'))")
+
+    await client.query(`
+        CREATE TABLE IF NOT EXISTS _migrations_run (
+            filename VARCHAR(255) PRIMARY KEY,
+            run_at TIMESTAMP DEFAULT NOW(),
+            checksum CHAR(64)
+        );
+    `)
+    await client.query("ALTER TABLE _migrations_run ADD COLUMN IF NOT EXISTS checksum CHAR(64)")
+
+    const result = await client.query<AppliedMigration>("SELECT filename, checksum FROM _migrations_run")
+    const appliedMigrations = new Map(result.rows.map((row) => [row.filename, row.checksum]))
+
+    let newMigrationsCount = 0
+    for (const file of migrationFilesIn(migrationsDirectory)) {
+        const filePath = join(migrationsDirectory, file)
+        const sql = readFileSync(filePath, "utf-8")
+        const currentChecksum = checksum(sql)
+
+        if (appliedMigrations.has(file)) {
+            const appliedChecksum = appliedMigrations.get(file)
+            if (appliedChecksum && appliedChecksum !== currentChecksum) {
+                throw new Error(`Migration ${file} has changed since it was applied`)
             }
 
-            console.log(`Running migration: ${file}`)
-            const filePath = join(migrationsDir, file)
-            const sql = readFileSync(filePath, "utf-8")
-
-            try {
-                await query_database(sql, [], true)
-                await query_database("INSERT INTO _migrations_run (filename) VALUES ($1)", [file])
-                console.log(`${file} completed`)
-                newMigrationsCount++
-            } catch (error: any) {
-                // TODO this is not very good, implement a better migration system or use something that already works...
-                if (
-                    error.code === "42710" ||
-                    error.code === "42P07" ||
-                    error.code === "42P06" ||
-                    error.code === "23505" ||
-                    sql.includes("IF NOT EXISTS")
-                ) {
-                    console.log(` ${file} - exists, skipping`)
-                } else {
-                    throw error
-                }
+            // Databases created by the old runner have no checksums. Anchor them now.
+            if (!appliedChecksum) {
+                await client.query("UPDATE _migrations_run SET checksum = $2 WHERE filename = $1", [file, currentChecksum])
             }
+
+            console.log(`Skipping migration (already run): ${file}`)
+            continue
         }
 
+        console.log(`Running migration: ${file}`)
+        await client.query(sql)
+        await client.query("INSERT INTO _migrations_run (filename, checksum) VALUES ($1, $2)", [file, currentChecksum])
+        console.log(`${file} completed`)
+        newMigrationsCount++
+    }
+
+    return newMigrationsCount
+}
+
+export const runMigrations = async (options: MigrationOptions = {}): Promise<void> => {
+    const migrationsDirectory = options.migrationsDirectory ?? join(process.cwd(), "src/migrations")
+    const transaction = options.transaction ?? withTransaction
+
+    try {
+        console.log("Running migrations...")
+        const newMigrationsCount = await transaction((client) => migrate(client, migrationsDirectory))
         console.log(`${newMigrationsCount} new migration(s) completed successfully`)
     } catch (error) {
         console.error("Migration failed:", error)

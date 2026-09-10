@@ -10,6 +10,6 @@ CREATE TABLE IF NOT EXISTS BlockedTime(
     FOREIGN KEY(cid) REFERENCES Controller(cid)
 );
 
-CREATE INDEX idx_blocked_time_dates ON BlockedTime(blocked_start, blocked_end);
+CREATE INDEX IF NOT EXISTS idx_blocked_time_dates ON BlockedTime(blocked_start, blocked_end);
 
-CREATE INDEX idx_blocked_time_position ON BlockedTime(position);
+CREATE INDEX IF NOT EXISTS idx_blocked_time_position ON BlockedTime(position);

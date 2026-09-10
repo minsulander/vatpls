@@ -1,5 +1,11 @@
-CREATE TYPE RATING AS ENUM
-    ('OBS', 'S1', 'S2', 'S3', 'C1', 'C3', 'I3');
+DO $$
+BEGIN
+    CREATE TYPE RATING AS ENUM
+        ('OBS', 'S1', 'S2', 'S3', 'C1', 'C3', 'I3');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END
+$$;
 
 CREATE TABLE IF NOT EXISTS Controller(
     cid                 VARCHAR(7) PRIMARY KEY NOT NULL,
@@ -18,8 +24,14 @@ CREATE TABLE IF NOT EXISTS Session(
     FOREIGN KEY(cid) REFERENCES Controller(cid)
 );
 
-CREATE TYPE STATE AS ENUM
-    ('ACTIVE', 'PAUSE', 'OTHER');
+DO $$
+BEGIN
+    CREATE TYPE STATE AS ENUM
+        ('ACTIVE', 'PAUSE', 'OTHER');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END
+$$;
 
 CREATE TABLE IF NOT EXISTS Active(
     cid             VARCHAR(7) PRIMARY KEY REFERENCES Controller(cid),
@@ -29,9 +41,15 @@ CREATE TABLE IF NOT EXISTS Active(
     in_list         STATE DEFAULT 'PAUSE'
 );
 
-CREATE TYPE ENDORSEMENT_TYPE AS ENUM(
-    'NIL', 'T2 APS', 'T1 TWR', 'T1 APP', 'SOLO GG APP', 'SOLO GG TWR' 
-);
+DO $$
+BEGIN
+    CREATE TYPE ENDORSEMENT_TYPE AS ENUM(
+        'NIL', 'T2 APS', 'T1 TWR', 'T1 APP', 'SOLO GG APP', 'SOLO GG TWR'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END
+$$;
 
 CREATE TABLE IF NOT EXISTS Endorsements(
     cid             VARCHAR(7) NOT NULL,

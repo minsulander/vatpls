@@ -1,10 +1,31 @@
-import { QueryResult, Pool } from "pg"
+import { Pool, PoolClient, QueryResult } from "pg"
 import dotenv from "dotenv"
 import { IActivity, NewController, OActive, OActivity, SkeletonController, State, NewBlockedTime, BlockedTime } from "../types/types"
 
 dotenv.config()
 
 const pool = new Pool()
+
+export type TransactionClient = Pick<PoolClient, "query">
+
+export const withTransaction = async <T>(operation: (client: TransactionClient) => Promise<T>): Promise<T> => {
+    const client = await pool.connect()
+    try {
+        await client.query("BEGIN")
+        const result = await operation(client)
+        await client.query("COMMIT")
+        return result
+    } catch (error) {
+        try {
+            await client.query("ROLLBACK")
+        } catch (rollbackError) {
+            console.error("Rollback failed", rollbackError)
+        }
+        throw error
+    } finally {
+        client.release()
+    }
+}
 
 export const closeDatabase = async () => {
     await pool.end()

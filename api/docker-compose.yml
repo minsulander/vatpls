@@ -1,33 +1,50 @@
 services:
     postgres_db:
         container_name: postgres_container
-        image: postgres:latest
-        env_file:
-            - .env
-        #network configuration
+        # Stay on PostgreSQL 18 while receiving its minor releases.
+        image: postgres:18
+        environment:
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+            POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER must be set}
+            POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB must be set}
         ports:
-            - 5432:5432
+            # Host access is local-only. Use an SSH tunnel for remote access.
+            - "127.0.0.1:5432:5432"
         networks:
             - db_network
         volumes:
             - storage_postgres:/var/lib/postgresql/data
-            - ./src/migrations:/docker-entrypoint-initdb.d/
+            - ./src/migrations:/docker-entrypoint-initdb.d/:ro
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 10s
+        restart: unless-stopped
+        logging:
+            options:
+                max-size: "10m"
+                max-file: "3"
 
-    # Postgres admin panel image.
     pg-admin:
         container_name: pgadmin_container
-        image: dpage/pgadmin4
-        env_file:
-            - .env
-
-        #network configuration
+        image: dpage/pgadmin4:latest
+        environment:
+            PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:?PGADMIN_DEFAULT_EMAIL must be set}
+            PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:?PGADMIN_DEFAULT_PASSWORD must be set}
         ports:
-            - 15433:80
+            # The web UI is local-only. Use an SSH tunnel for remote access.
+            - "127.0.0.1:15433:80"
         networks:
             - db_network
-
         volumes:
             - storage_pgadmin:/var/lib/pgadmin
+        restart: unless-stopped
+        logging:
+            options:
+                max-size: "10m"
+                max-file: "3"
 
 networks:
     db_network:

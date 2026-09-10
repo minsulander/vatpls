@@ -1,20 +1,19 @@
-
 /**
  * INPUT VALIDATION FN TESTS
  */
-/* 
+/*
 const badControllerData = {
     Controller: {
       cidq: "123456"
     }
   };
-  
+
   const godControllerData = {
     Controller: {
       cid: "1234567"
     }
   }
-  
+
   describe("Input validation", () => {
     it("Approves when CID is included in the body", () => {
       expect(validateInputControllerData(godControllerData)).toBe(true);
@@ -26,11 +25,11 @@ const badControllerData = {
       expect(validateInputControllerData({})).toBe(false);
     });
   });
-  
+
   /**
    * CONVERT DATABASE RESPONSE FN TEST
 
-  
+
   const ControllerResult: Controller = {
     name: "Test Testson",
     sign: "TT",
@@ -43,6 +42,6 @@ const badControllerData = {
   };
    */
 
-  test("test", () => {
-    expect(true).toBe(true);
-  })
+test("test", () => {
+    expect(true).toBe(true)
+})

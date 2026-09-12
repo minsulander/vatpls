@@ -202,9 +202,10 @@ const positions = [
     "APP1",
     "APP2",
     "APP3",
-    "WS",
     "Ö1",
     "Ö2",
+    "WS",
+    "APP-C",
 ]
 
 document.title = "VATPLS"
@@ -216,7 +217,7 @@ const positionGroups = ref([
     },
     {
         name: "APP",
-        positions: positions.filter((p) => p.startsWith("APP")),
+        positions: positions.filter((p) => p.startsWith("APP") && p !== "APP-C"),
     },
     {
         name: "GG",
@@ -228,7 +229,7 @@ const positionGroups = ref([
     },
     {
         name: "Other",
-        positions: ["Online", "Ö1", "Ö2", "WS"],
+        positions: ["Online", "Ö1", "Ö2", "WS", "APP-C"],
     },
 ])
 

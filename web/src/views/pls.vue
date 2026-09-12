@@ -8,19 +8,47 @@
 
     <v-container fluid class="pa-5 d-flex flex-column" style="height: 100vh">
         <!-- Button to Add or Remove Controller -->
-        <div class="d-flex flex-row ga-3 mb-3 justify-end">
-            <v-btn @click="showControllerDialog = isAuthorized()" color="primary" variant="tonal"> Start shift </v-btn>
-            <v-btn @click="showDeleteControllerDialog = isAuthorized()" color="error" variant="tonal"> End shift </v-btn>
+        <div class="d-flex flex-wrap align-start ga-3 mb-3">
+            <v-select
+                v-model="selectedGroups"
+                class="group-selector"
+                label="Välj grupper"
+                :items="groupOptions"
+                multiple
+                chips
+                density="compact"
+                variant="outlined"
+                hide-details
+            >
+                <template #chip="{ item }">
+                    <v-chip
+                        class="group-chip"
+                        color="primary"
+                        variant="flat"
+                        @click.stop="deselectGroup(item.value as ControllerGroup)"
+                    >
+                        <span class="group-chip__remove" aria-hidden="true">×</span>
+                        {{ item.title }}
+                    </v-chip>
+                </template>
+            </v-select>
+
+            <v-spacer></v-spacer>
+
+            <div class="d-flex ga-3">
+                <v-btn @click="showControllerDialog = isAuthorized()" color="primary" variant="tonal"> Start shift </v-btn>
+                <v-btn @click="showDeleteControllerDialog = isAuthorized()" color="error" variant="tonal"> End shift </v-btn>
+            </div>
         </div>
 
         <v-row class="d-flex flex-grow-1">
             <ControllerColumn
                 title="Active"
                 column-type="active"
-                :controllers="activeControllers"
+                :controllers="filteredActiveControllers"
                 :authorized="authorized"
                 container-ref="activeContainer"
-                @update="(controllers: Controller[]) => activeControllers = controllers"
+                @update="updateActiveControllers"
                 @add="onAddPosition"
                 @remove="onRemove"
                 @drag-start="onDragStart"
@@ -30,10 +58,10 @@
             <ControllerColumn
                 title="Break"
                 column-type="break"
-                :controllers="controllerNames"
+                :controllers="filteredControllerNames"
                 :authorized="authorized"
                 container-ref="breakContainer"
-                @update="(controllers: Controller[]) => controllerNames = controllers"
+                @update="updateControllerNames"
                 @add="onAddPause"
                 @remove="onRemove"
                 @drag-start="onDragStart"
@@ -43,10 +71,10 @@
             <ControllerColumn
                 title="Other"
                 column-type="other"
-                :controllers="awayControllers"
+                :controllers="filteredAwayControllers"
                 :authorized="authorized"
                 container-ref="otherContainer"
-                @update="(controllers: Controller[]) => awayControllers = controllers"
+                @update="updateAwayControllers"
                 @add="onAddAway"
                 @remove="onRemove"
                 @drag-start="onDragStart"
@@ -183,6 +211,14 @@ import callsigns from "@/assets/callsigns.txt?raw"
 
 const CallsignsList = computed(() => callsigns.split("\n").filter((line) => line.trim() !== ""))
 
+const groupOptions = ["S1", "S2", "S3", "C1", "T1 APP", "T1 TWR"] as const
+type ControllerGroup = (typeof groupOptions)[number]
+const selectedGroups = ref<ControllerGroup[]>([...groupOptions])
+
+function deselectGroup(group: ControllerGroup) {
+    selectedGroups.value = selectedGroups.value.filter((selectedGroup) => selectedGroup !== group)
+}
+
 const positions = [
     "Online",
     "GG APP",
@@ -267,6 +303,36 @@ const foundController = ref<Controller | null>(null)
 const activeControllers = ref<Controller[]>([])
 const controllerNames = ref<Controller[]>([])
 const awayControllers = ref<Controller[]>([])
+
+function controllerMatchesSelectedGroups(controller: Controller) {
+    const hasSelectedRating = selectedGroups.value.some((group) => group === controller.rating)
+    const hasSelectedEndorsement = selectedGroups.value.some(
+        (group) => group.startsWith("T1 ") && controller.endorsment?.includes(group)
+    )
+
+    return hasSelectedRating || hasSelectedEndorsement
+}
+
+const filteredActiveControllers = computed(() => activeControllers.value.filter(controllerMatchesSelectedGroups))
+const filteredControllerNames = computed(() => controllerNames.value.filter(controllerMatchesSelectedGroups))
+const filteredAwayControllers = computed(() => awayControllers.value.filter(controllerMatchesSelectedGroups))
+
+function mergeHiddenControllers(allControllers: Controller[], visibleControllers: Controller[]) {
+    const hiddenControllers = allControllers.filter((controller) => !controllerMatchesSelectedGroups(controller))
+    return [...visibleControllers, ...hiddenControllers]
+}
+
+function updateActiveControllers(controllers: Controller[]) {
+    activeControllers.value = mergeHiddenControllers(activeControllers.value, controllers)
+}
+
+function updateControllerNames(controllers: Controller[]) {
+    controllerNames.value = mergeHiddenControllers(controllerNames.value, controllers)
+}
+
+function updateAwayControllers(controllers: Controller[]) {
+    awayControllers.value = mergeHiddenControllers(awayControllers.value, controllers)
+}
 
 const predefinedControllers = ref<Controller[]>([])
 
@@ -736,6 +802,22 @@ const restoreScrollPosition = (bay: string) => {
 </script>
 
 <style scoped>
+.group-selector {
+    flex: 0 1 440px;
+    min-width: 280px;
+}
+
+.group-chip {
+    border-radius: 2px;
+    cursor: pointer;
+}
+
+.group-chip__remove {
+    margin-right: 8px;
+    font-size: 1.15em;
+    line-height: 1;
+}
+
 .position-dialog-card {
     display: flex;
     flex-direction: column;

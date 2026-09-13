@@ -1,6 +1,17 @@
 <template>
     <v-col class="d-flex flex-column" style="height: 90vh">
-        <h2>{{ title }}</h2>
+        <div class="lane-header d-flex align-center">
+            <h2>{{ title }}</h2>
+            <button
+                type="button"
+                class="sort-button"
+                :aria-label="sortButtonLabel"
+                :title="sortButtonLabel"
+                @click="sortAscending = !sortAscending"
+            >
+                <v-icon size="16">{{ sortAscending ? "mdi-arrow-down" : "mdi-arrow-up" }}</v-icon>
+            </button>
+        </div>
         <div
             class="d-flex flex-column gap-2 pa-4 flex-grow-1 bg-grey darken-3 overflow-auto"
             style="max-height: 100%"
@@ -122,9 +133,18 @@ interface Emits {
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
+const sortAscending = ref(true)
+
+const sortButtonLabel = computed(() =>
+    sortAscending.value ? "Sort longest time first" : "Sort shortest time first"
+)
 
 const controllers = computed({
-    get: () => props.controllers,
+    get: () =>
+        [...props.controllers].sort((a, b) => {
+            const timeDifference = calculateSessionLength(a.timestamp) - calculateSessionLength(b.timestamp)
+            return sortAscending.value ? timeDifference : -timeDifference
+        }),
     set: (value) => emit("update", value),
 })
 
@@ -321,6 +341,30 @@ const getBorderTextColor = (ctrl: Controller) => {
 <style scoped>
 .ghost {
     opacity: 50%;
+}
+
+.lane-header {
+    min-height: 48px;
+    gap: 2px;
+}
+
+.sort-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    color: inherit;
+    background: transparent;
+    border: 0;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.sort-button:hover,
+.sort-button:focus-visible {
+    background: rgba(255, 255, 255, 0.12);
 }
 
 .bg-grey {

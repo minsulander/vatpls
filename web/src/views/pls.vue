@@ -193,17 +193,19 @@ const positions = [
     "SA GND",
     "SA DEL",
     "SA AD+",
+    "SA AD++",
     "ACC1",
     "ACC2",
     "ACC3",
     "ACC4",
     "ACC5",
     "ACC6",
-    "APP1",
-    "APP2",
-    "APP3",
+    "OS ARR-E",
+    "OS ARR-W",
+    "SA DIR",
     "Ö1",
     "Ö2",
+    "Ö3",
     "WS",
     "APP-C",
 ]
@@ -216,8 +218,8 @@ const positionGroups = ref([
         positions: positions.filter((p) => p.startsWith("ACC")),
     },
     {
-        name: "APP",
-        positions: positions.filter((p) => p.startsWith("APP") && p !== "APP-C"),
+        name: "OS APP",
+        positions: ["OS ARR-E", "OS ARR-W", "SA DIR"],
     },
     {
         name: "GG",
@@ -225,11 +227,11 @@ const positionGroups = ref([
     },
     {
         name: "SA",
-        positions: positions.filter((p) => p.startsWith("SA")),
+        positions: positions.filter((p) => p.startsWith("SA") && p !== "SA DIR"),
     },
     {
         name: "Other",
-        positions: ["Online", "Ö1", "Ö2", "WS", "APP-C"],
+        positions: ["Online", "Ö1", "Ö2", "Ö3", "WS", "APP-C"],
     },
 ])
 
